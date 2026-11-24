@@ -1,0 +1,21 @@
+    </main>
+  </div>
+
+  <nav class="alt-menu" aria-label="Mobil gezinti">
+    <% const altMenu = [
+         { yol: '/merkez',  im: '▣', ad: 'Merkez' },
+         { yol: '/depo',    im: '▤', ad: 'Depo' },
+         { yol: '/pano',    im: '◈', ad: 'Pano' },
+         { yol: '/cambaz',  im: '◉', ad: 'Cambaz' },
+         { yol: '/loglar',  im: '≡', ad: 'Log' },
+         { yol: '/ayarlar', im: '⚙', ad: 'Ayar' }
+       ]; %>
+    <% altMenu.forEach(function (o) { %>
+      <a class="alt-bag <%= rota === o.yol ? 'etkin' : '' %>" href="<%= o.yol %>">
+        <span class="menu-im" aria-hidden="true"><%= o.im %></span>
+        <span><%= o.ad %></span>
+      </a>
+    <% }); %>
+  </nav>
+
+</div>

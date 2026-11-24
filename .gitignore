@@ -1,0 +1,17 @@
+node_modules/
+.env
+.env.*
+!.env.example
+depo_veri/*
+!depo_veri/.gitkeep
+npm-debug.log*
+*.log
+logs/
+.DS_Store
+Thumbs.db
+coverage/
+.vscode/
+.idea/
+tmp/
+*.pem
+*.key

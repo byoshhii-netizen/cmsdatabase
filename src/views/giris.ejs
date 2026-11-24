@@ -1,0 +1,79 @@
+<%- include('partials/bas') %>
+
+<div class="giris-sahne">
+  <section class="giris-kutu" id="giris-kutu" aria-labelledby="giris-basligi">
+
+    <div class="giris-amblem">
+      <div class="amblem-cerceve" aria-hidden="true">◈</div>
+      <h1 class="giris-ad glitch" id="giris-basligi" data-metin="<%= sistem.sistem_adi %>"><%= sistem.sistem_adi %></h1>
+      <div class="giris-kod">KAPALI DEVRE // <%= sistem.sistem_kodu %></div>
+    </div>
+
+    <div class="acilis" aria-hidden="true">
+      <span class="acilis-satir"><span class="ok">&gt;</span> cekirdek yuklendi ... TAMAM</span>
+      <span class="acilis-satir"><span class="ok">&gt;</span> sifreli kanal kuruldu ... TAMAM</span>
+      <span class="acilis-satir"><span class="ok">&gt;</span> kimlik dogrulama bekleniyor<span class="imlec"></span></span>
+    </div>
+
+    <% if (locals.bildirim) { %>
+      <div class="uyari-kutu uyari-kutu--bilgi">
+        <span class="uyari-im" aria-hidden="true">i</span>
+        <span><%= bildirim %></span>
+      </div>
+    <% } %>
+
+    <% if (locals.kilit && kilit.kilitli) { %>
+      <div class="uyari-kutu uyari-kutu--dikkat bosluk-ust">
+        <span class="uyari-im" aria-hidden="true">!</span>
+        <span>
+          Bu adres gecici olarak kilitli. Kalan sure:
+          <strong class="mono-sayi"><%= Math.ceil(kilit.kalanSaniye / 60) %></strong> dakika.
+        </span>
+      </div>
+    <% } %>
+
+    <div class="uyari-kutu uyari-kutu--hata <%= locals.hata ? '' : 'gizli' %>" id="giris-hata" role="alert">
+      <%= locals.hata || '' %>
+    </div>
+
+    <form method="post" action="/giris" id="giris-form" class="bosluk-ust" autocomplete="off" novalidate>
+      <%- csrfAlani() %>
+      <input type="hidden" name="hedef" value="<%= hedef %>">
+
+      <div class="alan">
+        <label class="alan-etiket" for="kullanici_adi">OPERATOR KIMLIGI</label>
+        <div class="girdi-sarmal">
+          <input type="text" id="kullanici_adi" name="kullanici_adi"
+                 value="<%= locals.varsayilanKullanici || '' %>"
+                 placeholder="kullanici adi" maxlength="32"
+                 autocapitalize="none" autocorrect="off" spellcheck="false"
+                 autocomplete="username" required>
+        </div>
+      </div>
+
+      <div class="alan">
+        <label class="alan-etiket" for="sifre">ERISIM SIFRESI</label>
+        <div class="girdi-sarmal">
+          <input type="password" id="sifre" name="sifre"
+                 placeholder="••••••••••" maxlength="200"
+                 autocomplete="current-password" required>
+        </div>
+        <div class="kucuk kehribar-metin gizli" id="caps-uyari">! CAPS LOCK ACIK</div>
+      </div>
+
+      <button type="submit" class="dugme dugme--tam" id="giris-dugme"
+              <%= (locals.kilit && kilit.kilitli) ? 'disabled' : '' %>>
+        <span aria-hidden="true">▸</span>
+        <span class="dugme-metin">ERISIM TALEP ET</span>
+      </button>
+    </form>
+
+    <div class="giris-alt">
+      <span>KANAL: TLS / AES-256-GCM</span>
+      <span>ARGON2ID</span>
+    </div>
+  </section>
+</div>
+
+<% const betikler = ['/js/giris.js']; %>
+<%- include('partials/son', { betikler: betikler }) %>

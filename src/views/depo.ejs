@@ -1,0 +1,423 @@
+<%- include('partials/bas') %>
+<%- include('partials/kabuk-ust') %>
+
+<div class="sayfa-basligi">
+  <div>
+    <div class="yol">
+      // <a href="/depo">DEPO</a>
+      <% (yolZinciri || []).forEach(function (h, i) { %>
+        <% if (i === (yolZinciri.length - 1)) { %>
+          / <span class="zumrut"><%= h.ad %></span>
+        <% } else { %>
+          / <a href="/depo?klasor=<%= h.id %>"><%= h.ad %></a>
+        <% } %>
+      <% }); %>
+    </div>
+    <h1><%= mevcutKlasor ? mevcutKlasor.ad : 'VERI KASASI' %></h1>
+  </div>
+
+  <div class="sag dugme-sirasi">
+    <% if (mevcutKlasor) { %>
+      <a class="dugme dugme--sonuk dugme--kucuk"
+         href="/depo<%= mevcutKlasor.ebeveyn_id ? '?klasor=' + mevcutKlasor.ebeveyn_id : '' %>">
+        <span class="dugme-metin">&lsaquo; UST SEKTOR</span>
+      </a>
+    <% } %>
+  </div>
+</div>
+
+<% if (hata) { %>
+  <div class="uyari-kutu uyari-kutu--hata">
+    <span class="uyari-im" aria-hidden="true">!</span><span><%= hata %></span>
+  </div>
+<% } %>
+<% if (durum) { %>
+  <div class="uyari-kutu uyari-kutu--bilgi">
+    <span class="uyari-im" aria-hidden="true">i</span><span><%= durum %></span>
+  </div>
+<% } %>
+
+<% if (kilitliHalka) { %>
+
+  <!-- ========================== KILIT ACMA EKRANI ========================== -->
+  <section class="panel panel--vurgu kilit-ekrani">
+    <div class="amblem-cerceve" aria-hidden="true">🔒</div>
+    <h2 class="ortala"><%= kilitliHalka.ad %></h2>
+    <p class="sonuk ortala">Bu sektor bagimsiz bir sifre ile korunuyor. Devam etmek icin sifreyi girin.</p>
+
+    <form method="post" action="/depo/klasor/<%= kilitliHalka.id %>/kilit-dogrula" class="bosluk-ust" autocomplete="off">
+      <%- csrfAlani() %>
+      <input type="hidden" name="hedef" value="<%= hedefKlasor %>">
+      <div class="alan">
+        <label class="alan-etiket" for="kilit-sifre">SEKTOR SIFRESI</label>
+        <div class="girdi-sarmal">
+          <input type="password" id="kilit-sifre" name="sifre" maxlength="200" autocomplete="off" required autofocus>
+        </div>
+      </div>
+      <button type="submit" class="dugme dugme--tam">
+        <span aria-hidden="true">⚿</span><span class="dugme-metin">KILIDI AC</span>
+      </button>
+    </form>
+  </section>
+
+<% } else { %>
+
+  <div class="dugme-sirasi">
+    <button type="button" class="dugme dugme--kucuk" data-modal-ac="modal-sektor">
+      <span class="dugme-metin">+ YENI SEKTOR</span>
+    </button>
+    <% if (mevcutKlasor) { %>
+      <button type="button" class="dugme dugme--kucuk" data-modal-ac="modal-yukle">
+        <span class="dugme-metin">⬆ DOSYA YUKLE</span>
+      </button>
+      <button type="button" class="dugme dugme--kucuk" data-belge-yeni data-modal-ac="modal-belge">
+        <span class="dugme-metin">+ YENI BELGE</span>
+      </button>
+      <button type="button" class="dugme dugme--kucuk" data-modal-ac="modal-paylas">
+        <span class="dugme-metin">↗ DISARIYA AC</span>
+      </button>
+      <button type="button" class="dugme dugme--sonuk dugme--kucuk" data-modal-ac="modal-kilit">
+        <span class="dugme-metin"><%= mevcutKlasor.kilitli ? '⚿ KILIDI YONET' : '⚿ KILIT KOY' %></span>
+      </button>
+      <form method="post" action="/depo/klasor/<%= mevcutKlasor.id %>/sil"
+            data-onay="&quot;<%= mevcutKlasor.ad %>&quot; sektorunu ve TUM icerigini (alt sektorler, dosyalar, belgeler) guvenli sekilde silmek istediginize emin misiniz? Bu islem GERI ALINAMAZ.">
+        <%- csrfAlani() %>
+        <button type="submit" class="dugme dugme--tehlike dugme--kucuk">
+          <span class="dugme-metin">🗑 SEKTORU SIL</span>
+        </button>
+      </form>
+    <% } %>
+  </div>
+
+  <!-- ============================== ALT SEKTORLER ============================== -->
+  <section class="panel bosluk-ust">
+    <div class="panel-baslik">
+      <span>SEKTORLER</span>
+      <span class="sag"><%= altKlasorler.length %> kayit</span>
+    </div>
+
+    <% if (altKlasorler.length === 0) { %>
+      <div class="bos"><span class="bos-im" aria-hidden="true">▤</span> Bu seviyede sektor yok.</div>
+    <% } else { %>
+      <div class="kart-liste">
+        <% altKlasorler.forEach(function (k) { %>
+          <a class="kart" href="/depo?klasor=<%= k.id %>" data-renk="<%= k.renk %>" data-gecis-yazi="SEKTOR ACILIYOR">
+            <span class="kart-im" aria-hidden="true"><%= k.kilitli ? '🔒' : '▤' %></span>
+            <div class="kart-govde">
+              <div class="kart-ad"><%= k.ad %><% if (k.aktif_paylasim > 0) { %> <span class="etiket etiket--cam kucuk">DISA ACIK</span><% } %></div>
+              <div class="kart-alt"><%= k.aciklama || 'aciklama yok' %></div>
+            </div>
+            <div class="kart-sag">
+              <div class="mono-sayi"><%= k.dosya_sayisi %>/<%= k.belge_sayisi %>/<%= k.alt_klasor_sayisi %></div>
+              <div>dosya/belge/alt</div>
+            </div>
+          </a>
+        <% }); %>
+      </div>
+    <% } %>
+  </section>
+
+  <% if (mevcutKlasor) { %>
+
+    <!-- ================================ BELGELER ================================ -->
+    <section class="panel bosluk-ust">
+      <div class="panel-baslik">
+        <span>BELGELER</span>
+        <span class="sag"><%= belgeler.length %> kayit</span>
+      </div>
+
+      <% if (belgeler.length === 0) { %>
+        <div class="bos"><span class="bos-im" aria-hidden="true">▧</span> Bu sektorde belge yok.</div>
+      <% } else { %>
+        <div class="kart-liste">
+          <% belgeler.forEach(function (b) { %>
+            <button type="button" class="kart kart--dugme" data-belge-ac data-id="<%= b.id %>" data-renk="#a78bfa">
+              <span class="kart-im" aria-hidden="true">▧</span>
+              <div class="kart-govde">
+                <div class="kart-ad tek-satir"><%= b.baslik %></div>
+                <div class="kart-alt"><%= b.imza ? 'imza: ' + b.imza : 'imzasiz' %> · surum <%= b.surum %></div>
+              </div>
+              <div class="kart-sag">
+                <div class="zaman"><%= new Date(b.guncellendi_at).toLocaleDateString('tr-TR') %></div>
+              </div>
+            </button>
+          <% }); %>
+        </div>
+      <% } %>
+    </section>
+
+    <!-- ================================= DOSYALAR ================================ -->
+    <section class="panel bosluk-ust">
+      <div class="panel-baslik">
+        <span>DOSYALAR</span>
+        <span class="sag"><%= dosyalar.length %> kayit</span>
+      </div>
+
+      <% if (dosyalar.length === 0) { %>
+        <div class="bos"><span class="bos-im" aria-hidden="true">∅</span> Bu sektorde dosya yok.</div>
+      <% } else { %>
+        <div class="medya-izgara">
+          <% dosyalar.forEach(function (d) {
+               const onizlenebilir = /^image\/|^video\/|^audio\//.test(d.mime_turu) || d.mime_turu === 'application/pdf';
+               const uzanti = (String(d.mime_turu).split('/')[1] || '').toUpperCase();
+          %>
+            <div class="medya-kart-sarmal">
+              <button type="button" class="medya-kart"
+                      data-medya-ac
+                      data-id="<%= d.id %>"
+                      data-ad="<%= d.ad %>"
+                      data-mime="<%= d.mime_turu %>"
+                      data-goruntule="/depo/dosya/<%= d.id %>/goruntule"
+                      data-indir="/depo/dosya/<%= d.id %>/indir"
+                      data-onizlenebilir="<%= onizlenebilir ? '1' : '0' %>">
+                <span class="medya-kart-im" aria-hidden="true">
+                  <%= d.mime_turu.startsWith('image/') ? '🖼' : d.mime_turu.startsWith('video/') ? '🎞' : d.mime_turu.startsWith('audio/') ? '♪' : d.mime_turu === 'application/pdf' ? '▤' : '⬚' %>
+                </span>
+                <span class="medya-kart-ad tek-satir"><%= d.ad %></span>
+                <span class="medya-kart-alt"><%= uzanti %> · <%= (Number(d.boyut_bayt) / 1024).toFixed(0) %> KB · 👁 <%= d.goruntuleme_sayisi %></span>
+              </button>
+              <form method="post" action="/depo/dosya/<%= d.id %>/sil" class="medya-kart-sil"
+                    data-onay="&quot;<%= d.ad %>&quot; dosyasini guvenli sekilde silmek istediginize emin misiniz?">
+                <%- csrfAlani() %>
+                <button type="submit" class="dugme dugme--tehlike dugme--kucuk" title="Dosyayi sil">✕</button>
+              </form>
+            </div>
+          <% }); %>
+        </div>
+      <% } %>
+    </section>
+
+    <!-- ============================== DISA ACIK LINKLER ============================== -->
+    <section class="panel bosluk-ust">
+      <div class="panel-baslik">
+        <span>DISA ACIK BAGLANTILAR</span>
+        <span class="sag"><%= paylasimlar.length %> kayit</span>
+      </div>
+
+      <% if (paylasimlar.length === 0) { %>
+        <div class="bos"><span class="bos-im" aria-hidden="true">↗</span> Bu sektor icin disa acik baglanti yok.</div>
+      <% } else { %>
+        <div class="tablo-sarmal">
+          <table class="veri">
+            <thead><tr><th>BASLIK</th><th>DURUM</th><th>INDIRME</th><th>GORUNTULEME</th><th>ERISIM</th><th>BAGLANTI</th><th></th></tr></thead>
+            <tbody>
+              <% paylasimlar.forEach(function (p) { %>
+                <tr>
+                  <td class="tek-satir">
+                    <%= p.baslik %>
+                    <% if (p.sifreli) { %><span class="etiket etiket--sonuk kucuk">🔒 SIFRELI</span><% } %>
+                    <% if (p.son_kullanma_at) { %><div class="kucuk sonuk">bitis: <%= new Date(p.son_kullanma_at).toLocaleString('tr-TR') %></div><% } %>
+                  </td>
+                  <td><span class="etiket <%= p.aktif ? '' : 'etiket--sonuk' %>"><%= p.aktif ? 'AKTIF' : 'KAPALI' %></span></td>
+                  <td><span class="etiket <%= p.indirmeye_izin ? 'etiket--cam' : 'etiket--uyari' %>"><%= p.indirmeye_izin ? 'ACIK' : 'KAPALI' %></span></td>
+                  <td class="mono-sayi"><%= p.goruntuleme_sayisi %><% if (p.max_goruntuleme) { %> / <%= p.max_goruntuleme %><% } %></td>
+                  <td class="mono-sayi"><%= p.erisim_sayisi %></td>
+                  <td class="tek-satir">
+                    <code class="kucuk" data-paylasim-url="<%= publicUrl %>/paylas/<%= p.token %>"><%= publicUrl %>/paylas/<%= p.token %></code>
+                  </td>
+                  <td class="sag-hizala dugme-sirasi">
+                    <button type="button" class="dugme dugme--sonuk dugme--kucuk" data-kopyala="<%= publicUrl %>/paylas/<%= p.token %>">KOPYALA</button>
+                    <form method="post" action="/depo/paylasim/<%= p.id %>/<%= p.aktif ? 'kapat' : 'ac' %>">
+                      <%- csrfAlani() %>
+                      <button type="submit" class="dugme <%= p.aktif ? 'dugme--tehlike' : '' %> dugme--kucuk">
+                        <%= p.aktif ? 'KAPAT' : 'AC' %>
+                      </button>
+                    </form>
+                  </td>
+                </tr>
+              <% }); %>
+            </tbody>
+          </table>
+        </div>
+      <% } %>
+    </section>
+
+  <% } %>
+
+<% } %>
+
+<!-- =============================================================================
+     MODALLAR
+     ============================================================================= -->
+
+<!-- ----------------------------- Yeni Sektor ----------------------------- -->
+<div class="modal-perde" id="modal-sektor" aria-hidden="true">
+  <div class="modal-kutu">
+    <div class="modal-ust">
+      <span>YENI SEKTOR</span>
+      <button type="button" class="modal-kapat" data-modal-kapat>✕</button>
+    </div>
+    <form method="post" action="/depo/klasor" class="modal-govde">
+      <%- csrfAlani() %>
+      <input type="hidden" name="ebeveyn_id" value="<%= mevcutKlasor ? mevcutKlasor.id : '' %>">
+      <div class="alan">
+        <label class="alan-etiket" for="s-ad">SEKTOR ADI</label>
+        <div class="girdi-sarmal"><input type="text" id="s-ad" name="ad" maxlength="120" required autofocus></div>
+      </div>
+      <div class="alan">
+        <label class="alan-etiket" for="s-aciklama">ACIKLAMA</label>
+        <div class="girdi-sarmal"><input type="text" id="s-aciklama" name="aciklama" maxlength="500"></div>
+      </div>
+      <div class="alan">
+        <label class="alan-etiket" for="s-renk">RENK ETIKETI</label>
+        <input type="color" id="s-renk" name="renk" value="#00ff9c" class="renk-secici">
+      </div>
+      <button type="submit" class="dugme dugme--tam"><span class="dugme-metin">OLUSTUR</span></button>
+    </form>
+  </div>
+</div>
+
+<% if (mevcutKlasor) { %>
+<!-- ------------------------------ Dosya Yukle ------------------------------ -->
+<div class="modal-perde" id="modal-yukle" aria-hidden="true">
+  <div class="modal-kutu">
+    <div class="modal-ust">
+      <span>DOSYA YUKLE</span>
+      <button type="button" class="modal-kapat" data-modal-kapat>✕</button>
+    </div>
+    <form method="post" action="/depo/yukle" enctype="multipart/form-data" class="modal-govde" id="yukle-form">
+      <%- csrfAlani() %>
+      <input type="hidden" name="klasor_id" value="<%= mevcutKlasor.id %>">
+
+      <label class="surukle-birak" id="surukle-birak" for="yukle-girdi">
+        <span class="surukle-im" aria-hidden="true">⬆</span>
+        <span>Dosyalari buraya surukleyin veya secmek icin tiklayin</span>
+        <span class="kucuk sonuk">en fazla <%= depoMaxMb %> MB / dosya · her turden dosya kabul edilir</span>
+        <input type="file" id="yukle-girdi" name="dosyalar" multiple class="sr-only">
+      </label>
+
+      <div id="yukle-liste" class="kucuk sonuk bosluk-ust"></div>
+
+      <button type="submit" class="dugme dugme--tam bosluk-ust"><span class="dugme-metin">SIFRELE VE YUKLE</span></button>
+    </form>
+  </div>
+</div>
+
+<!-- ------------------------------- Yeni/Duzenle Belge ------------------------------- -->
+<div class="modal-perde" id="modal-belge" aria-hidden="true">
+  <div class="modal-kutu modal-kutu--genis">
+    <div class="modal-ust">
+      <span id="belge-modal-baslik">YENI BELGE</span>
+      <button type="button" class="modal-kapat" data-modal-kapat>✕</button>
+    </div>
+    <form method="post" action="/depo/belge" class="modal-govde" id="belge-form">
+      <%- csrfAlani() %>
+      <input type="hidden" name="klasor_id" value="<%= mevcutKlasor.id %>">
+      <input type="hidden" id="belge-id" value="">
+
+      <div class="alan">
+        <label class="alan-etiket" for="b-baslik">BASLIK</label>
+        <div class="girdi-sarmal"><input type="text" id="b-baslik" name="baslik" maxlength="180" required></div>
+      </div>
+      <div class="alan">
+        <label class="alan-etiket" for="b-icerik">METIN ICERIGI</label>
+        <textarea id="b-icerik" name="icerik" rows="10" maxlength="50000" placeholder="Belge icerigini yazin..."></textarea>
+      </div>
+      <div class="alan">
+        <label class="alan-etiket" for="b-imza">DIJITAL IMZA</label>
+        <div class="girdi-sarmal"><input type="text" id="b-imza" name="imza" maxlength="120" placeholder="orn. OPERATOR-07 // KARTRIDEX"></div>
+        <div class="ipucu">Belgeyi imzalayan operator/kod adi. Kaydedilince SHA-256 butunluk parmak izi otomatik hesaplanir.</div>
+      </div>
+
+      <div class="kucuk sonuk gizli" id="belge-hash-satiri">butunluk parmak izi: <span class="mono-sayi" id="belge-hash"></span></div>
+
+      <div class="dugme-sirasi bosluk-ust">
+        <button type="submit" class="dugme"><span class="dugme-metin" id="belge-kaydet-metin">OLUSTUR</span></button>
+        <button type="button" class="dugme dugme--tehlike gizli" id="belge-sil-dugme"><span class="dugme-metin">SIL</span></button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- -------------------------------- Disariya Ac -------------------------------- -->
+<div class="modal-perde" id="modal-paylas" aria-hidden="true">
+  <div class="modal-kutu">
+    <div class="modal-ust">
+      <span>DISARIYA AC</span>
+      <button type="button" class="modal-kapat" data-modal-kapat>✕</button>
+    </div>
+    <form method="post" action="/depo/klasor/<%= mevcutKlasor.id %>/paylas" class="modal-govde" id="paylas-form">
+      <%- csrfAlani() %>
+
+      <div class="alan">
+        <label class="alan-etiket" for="p-baslik">OZEL BASLIK</label>
+        <div class="girdi-sarmal"><input type="text" id="p-baslik" name="baslik" maxlength="150" value="<%= mevcutKlasor.ad %>" required></div>
+      </div>
+
+      <label class="secim">
+        <input type="checkbox" id="p-indirme" name="indirme_izni" value="true" checked>
+        <span>Dosyalarin indirilmesine izin ver (kapaliysa yalnizca goruntulenebilir)</span>
+      </label>
+
+      <label class="secim bosluk-ust">
+        <input type="checkbox" id="p-sifre-aktif" name="sifre_korumali" value="true">
+        <span>Sifre ile koru</span>
+      </label>
+      <div class="alan gizli" id="p-sifre-alani">
+        <label class="alan-etiket" for="p-sifre">BAGLANTI SIFRESI</label>
+        <div class="girdi-sarmal"><input type="text" id="p-sifre" name="sifre" maxlength="200" autocomplete="off"></div>
+      </div>
+
+      <div class="izgara izgara--2 bosluk-ust">
+        <div class="alan">
+          <label class="alan-etiket" for="p-sure">GECERLILIK (SAAT)</label>
+          <div class="girdi-sarmal"><input type="number" id="p-sure" name="sure_saat" min="1" max="8760" placeholder="sinirsiz"></div>
+        </div>
+        <div class="alan">
+          <label class="alan-etiket" for="p-kota">MAKS. GORUNTULEME</label>
+          <div class="girdi-sarmal"><input type="number" id="p-kota" name="max_goruntuleme" min="1" max="100000" placeholder="sinirsiz"></div>
+        </div>
+      </div>
+
+      <button type="submit" class="dugme dugme--tam"><span class="dugme-metin">BAGLANTI OLUSTUR</span></button>
+
+      <div class="uyari-kutu uyari-kutu--bilgi gizli bosluk-ust" id="paylas-sonuc"></div>
+    </form>
+  </div>
+</div>
+
+<!-- --------------------------------- Kilit Yonetimi --------------------------------- -->
+<div class="modal-perde" id="modal-kilit" aria-hidden="true">
+  <div class="modal-kutu">
+    <div class="modal-ust">
+      <span>SEKTOR KILIDI</span>
+      <button type="button" class="modal-kapat" data-modal-kapat>✕</button>
+    </div>
+    <div class="modal-govde">
+      <form method="post" action="/depo/klasor/<%= mevcutKlasor.id %>/kilit">
+        <%- csrfAlani() %>
+        <% if (mevcutKlasor.kilitli) { %>
+          <div class="alan">
+            <label class="alan-etiket" for="k-mevcut">MEVCUT SIFRE</label>
+            <div class="girdi-sarmal"><input type="password" id="k-mevcut" name="mevcut_sifre" maxlength="200" required></div>
+          </div>
+        <% } %>
+        <div class="alan">
+          <label class="alan-etiket" for="k-yeni"><%= mevcutKlasor.kilitli ? 'YENI SIFRE' : 'SEKTOR SIFRESI' %></label>
+          <div class="girdi-sarmal"><input type="password" id="k-yeni" name="yeni_sifre" minlength="4" maxlength="200" required></div>
+        </div>
+        <button type="submit" class="dugme dugme--tam">
+          <span class="dugme-metin"><%= mevcutKlasor.kilitli ? 'SIFREYI GUNCELLE' : 'KILIDI ETKINLESTIR' %></span>
+        </button>
+      </form>
+
+      <% if (mevcutKlasor.kilitli) { %>
+        <form method="post" action="/depo/klasor/<%= mevcutKlasor.id %>/kilit-kaldir" class="bosluk-ust">
+          <%- csrfAlani() %>
+          <div class="alan">
+            <label class="alan-etiket" for="k-kaldir-sifre">KILIDI KALDIRMAK ICIN SIFRE</label>
+            <div class="girdi-sarmal"><input type="password" id="k-kaldir-sifre" name="mevcut_sifre" maxlength="200" required></div>
+          </div>
+          <button type="submit" class="dugme dugme--tehlike dugme--tam"><span class="dugme-metin">KILIDI KALDIR</span></button>
+        </form>
+      <% } %>
+    </div>
+  </div>
+</div>
+<% } %>
+
+<%- include('partials/oynatici') %>
+
+<% const betikler = ['/js/depo.js', '/js/oynatici.js']; %>
+<%- include('partials/kabuk-alt') %>
+<%- include('partials/son', { betikler: betikler }) %>

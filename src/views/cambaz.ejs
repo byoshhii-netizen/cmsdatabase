@@ -1,0 +1,135 @@
+<%- include('partials/bas') %>
+<%- include('partials/kabuk-ust') %>
+
+<div class="cambaz-ekran"
+     id="cambaz-ekran"
+     data-anahtar-var="<%= anahtarVar ? '1' : '0' %>"
+     data-arama-var="<%= aramaVar ? '1' : '0' %>"
+     data-sunucu-ses-var="<%= sunucuSesVar ? '1' : '0' %>"
+     data-ses-tur="<%= sesAyarlari.tur %>"
+     data-ses-ad="<%= sesAyarlari.ad %>"
+     data-ses-hiz="<%= sesAyarlari.hiz %>"
+     data-ses-perde="<%= sesAyarlari.perde %>"
+     data-aktif-oturum="<%= aktifOturum ? aktifOturum.id : '' %>"
+     data-saglayici="<%= saglayici %>">
+
+  <aside class="cambaz-yan" id="cambaz-yan">
+    <div class="cambaz-yan-sekmeler">
+      <button type="button" class="cambaz-sekme-dugme etkin" data-sekme="gorusmeler">GORUSMELER</button>
+      <button type="button" class="cambaz-sekme-dugme" data-sekme="hafiza">HAFIZA (<%= hafiza.length %>)</button>
+    </div>
+
+    <div class="cambaz-sekme-govde" data-sekme-govde="gorusmeler">
+      <button type="button" class="dugme dugme--tam dugme--kucuk" id="cambaz-yeni-oturum">
+        <span class="dugme-metin">+ YENI GORUSME</span>
+      </button>
+
+      <div class="kart-liste bosluk-ust" id="cambaz-oturum-liste">
+        <% if (oturumlar.length === 0) { %>
+          <div class="bos"><span class="bos-im" aria-hidden="true">◉</span> Henuz gorusme yok.</div>
+        <% } %>
+        <% oturumlar.forEach(function (o) { %>
+          <div class="kart kart-sarmal cambaz-oturum-kart <%= aktifOturum && aktifOturum.id === o.id ? 'etkin' : '' %>"
+               data-oturum-id="<%= o.id %>" data-renk="#a78bfa">
+            <span class="kart-im" aria-hidden="true">◉</span>
+            <div class="kart-govde">
+              <div class="kart-ad"><%= o.baslik %></div>
+              <div class="kart-alt"><%= o.model || o.saglayici %> · <%= o.mesaj_sayisi %> mesaj</div>
+            </div>
+            <form class="pano-sil-form" action="/cambaz/oturum/<%= o.id %>/sil" data-ajax-oturum-sil>
+              <button type="button" class="dugme dugme--tehlike dugme--kucuk" title="Sil">✕</button>
+            </form>
+          </div>
+        <% }); %>
+      </div>
+    </div>
+
+    <div class="cambaz-sekme-govde gizli" data-sekme-govde="hafiza">
+      <form id="cambaz-hafiza-form">
+        <div class="alan">
+          <input type="text" id="hafiza-baslik" maxlength="150" placeholder="Baslik (orn. Operator tercihi)">
+        </div>
+        <div class="alan">
+          <textarea id="hafiza-icerik" maxlength="2000" rows="3" placeholder="Hatirlanacak bilgi..." required></textarea>
+        </div>
+        <button type="submit" class="dugme dugme--kucuk dugme--tam"><span class="dugme-metin">+ MANUEL EKLE</span></button>
+      </form>
+
+      <div class="kart-liste bosluk-ust" id="cambaz-hafiza-liste">
+        <% if (hafiza.length === 0) { %>
+          <div class="bos"><span class="bos-im" aria-hidden="true">◇</span> Kayitli hafiza yok.</div>
+        <% } %>
+        <% hafiza.forEach(function (h) { %>
+          <div class="kart kart-sarmal cambaz-hafiza-kart" data-hafiza-id="<%= h.id %>"
+               data-renk="<%= h.kaynak === 'otomatik' ? '#22d3ee' : '#00ff9c' %>">
+            <span class="kart-im" aria-hidden="true"><%= h.kaynak === 'otomatik' ? '◈' : '◇' %></span>
+            <div class="kart-govde">
+              <div class="kart-ad cambaz-hafiza-baslik" data-alan="baslik" contenteditable="true"><%= h.baslik %></div>
+              <div class="kart-alt cambaz-hafiza-icerik" data-alan="icerik" contenteditable="true"><%= h.icerik %></div>
+            </div>
+            <div class="kart-sag cambaz-hafiza-aksiyon">
+              <button type="button" class="dugme dugme--sonuk dugme--kucuk" data-hafiza-kaydet title="Degisikligi kaydet">💾</button>
+              <button type="button" class="dugme dugme--tehlike dugme--kucuk" data-hafiza-sil title="Sil">✕</button>
+            </div>
+          </div>
+        <% }); %>
+      </div>
+    </div>
+  </aside>
+
+  <main class="cambaz-ana">
+    <div class="cambaz-ust-serit">
+      <div class="cambaz-orb" id="cambaz-orb" aria-hidden="true">
+        <canvas id="cambaz-dalga" width="96" height="96"></canvas>
+        <span class="cambaz-orb-im">◉</span>
+      </div>
+      <div class="cambaz-durum-sutun">
+        <div class="cambaz-durum" id="cambaz-durum-metin">HAZIR</div>
+        <div class="kucuk sonuk">
+          <%= anahtarVar ? ('CEVRIMICI · ' + saglayici.toUpperCase()) : 'CEVRIMDISI (DAHILI MOTOR)' %>
+          <% if (aramaVar) { %> · ARAMA AKTIF<% } %>
+        </div>
+      </div>
+      <div class="sag">
+        <button type="button" id="cambaz-ses-ac-kapat" class="dugme dugme--sonuk dugme--kucuk" aria-pressed="true" title="Sesli yaniti ac/kapat">
+          <span class="dugme-metin">🔊 SES</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="cambaz-mesaj-akis" id="cambaz-mesaj-akis">
+      <% if (!aktifOturum) { %>
+        <div class="bos cambaz-bos-durum">
+          <span class="bos-im" aria-hidden="true">◉</span>
+          Cambaz hazir. Sohbete baslamak icin bir mesaj yaz veya mikrofona bas.
+        </div>
+      <% } %>
+      <% mesajlar.forEach(function (m) { %>
+        <div class="cambaz-mesaj cambaz-mesaj--<%= m.rol %>" data-mesaj-id="<%= m.id %>">
+          <div class="cambaz-mesaj-govde"><%= m.icerik %></div>
+          <div class="kucuk sonuk cambaz-mesaj-zaman">
+            <%= new Date(m.olusturuldu_at).toLocaleTimeString('tr-TR') %>
+            <% if (m.sesli) { %> · 🎙<% } %>
+            <% if (m.hata) { %> · <span class="kirmizi-metin">hata</span><% } %>
+          </div>
+        </div>
+      <% }); %>
+    </div>
+
+    <div class="uyari-kutu uyari-kutu--hata gizli" id="cambaz-hata-kutu" role="status"></div>
+
+    <div class="cambaz-girdi-cubugu">
+      <button type="button" id="cambaz-mikrofon" class="cambaz-mik-dugme" title="Mikrofonla konus (Web Speech API)">
+        <span aria-hidden="true">🎙</span>
+      </button>
+      <textarea id="cambaz-girdi" rows="1" maxlength="4000" placeholder="Cambaz'a bir komut yaz..."></textarea>
+      <button type="button" id="cambaz-gonder" class="dugme dugme--kucuk">
+        <span class="dugme-metin">GONDER</span>
+      </button>
+    </div>
+  </main>
+</div>
+
+<%- include('partials/kabuk-alt') %>
+<% const betikler = ['/js/cambaz.js']; %>
+<%- include('partials/son', { betikler: betikler }) %>

@@ -1,0 +1,165 @@
+<%- include('partials/bas') %>
+
+<div class="orta-sahne">
+  <div class="hata-kutu <%= (durum === 'acik' || durum === 'belge') ? 'hata-kutu--genis' : '' %>">
+
+    <% if (durum === 'gecersiz') { %>
+      <section class="panel panel--vurgu ortala">
+        <div class="amblem-cerceve" aria-hidden="true">✕</div>
+        <h1>BAGLANTI KAPALI</h1>
+        <p class="sonuk"><%= mesaj || 'Bu baglanti artik gecerli degil.' %></p>
+        <div class="giris-alt">
+          <span>KONTROLLU PAYLASIM</span><span>CMS VERI MERKEZI</span>
+        </div>
+      </section>
+
+    <% } else if (durum === 'sifre') { %>
+      <section class="panel panel--vurgu ortala">
+        <div class="amblem-cerceve" aria-hidden="true">🔒</div>
+        <h1>KORUMALI BAGLANTI</h1>
+        <p class="sonuk">Bu sektor sifre ile korunuyor. Erisim icin sifreyi girin.</p>
+
+        <% if (mesaj) { %>
+          <div class="uyari-kutu uyari-kutu--hata">
+            <span class="uyari-im" aria-hidden="true">!</span><span><%= mesaj %></span>
+          </div>
+        <% } %>
+
+        <form method="post" action="/paylas/<%= token %>/sifre" class="bosluk-ust" autocomplete="off">
+          <%- csrfAlani() %>
+          <div class="alan">
+            <label class="alan-etiket" for="sifre">ERISIM SIFRESI</label>
+            <div class="girdi-sarmal">
+              <input type="password" id="sifre" name="sifre" maxlength="200"
+                     autocomplete="off" required>
+            </div>
+          </div>
+          <button type="submit" class="dugme dugme--tam">
+            <span class="dugme-metin">ERISIM TALEP ET</span>
+          </button>
+        </form>
+      </section>
+
+    <% } else if (durum === 'belge') { %>
+      <section class="panel panel--vurgu">
+        <div class="panel-baslik">
+          <span>PAYLASILAN BELGE</span>
+          <span class="sag"><a href="/paylas/<%= token %>">&lsaquo; SEKTORE DON</a></span>
+        </div>
+
+        <h1><%= belge.baslik %></h1>
+        <p class="kucuk sonuk">
+          <%= new Date(belge.olusturuldu_at).toLocaleString('tr-TR') %>
+          <% if (belge.imza) { %> · imza: <span class="zumrut"><%= belge.imza %></span><% } %>
+        </p>
+
+        <div class="terminal terminal--belge bosluk-ust"><%= belge.icerik %></div>
+
+        <div class="kucuk sonuk bosluk-ust">
+          butunluk parmak izi (SHA-256): <span class="mono-sayi"><%= belge.butunluk_hash %></span>
+        </div>
+
+        <div class="giris-alt">
+          <span>SALT OKUNUR</span><span>ERISIM KAYDEDILDI</span>
+        </div>
+      </section>
+
+    <% } else { %>
+      <section class="panel panel--vurgu">
+        <div class="panel-baslik">
+          <span>PAYLASILAN SEKTOR</span>
+          <span class="sag"><%= link && link.tur ? link.tur.toUpperCase() : '' %></span>
+        </div>
+
+        <h1><%= (link && link.baslik) || 'ADSIZ SEKTOR' %></h1>
+
+        <% if (link && link.sonKullanma) { %>
+          <p class="kucuk sonuk">
+            Gecerlilik bitisi: <%= new Date(link.sonKullanma).toLocaleString('tr-TR') %>
+          </p>
+        <% } %>
+
+        <% if (klasorler.length > 0) { %>
+          <div class="panel-baslik bosluk-ust"><span>ALT SEKTORLER</span></div>
+          <div class="kart-liste">
+            <% klasorler.forEach(function (k) { %>
+              <div class="kart" data-renk="<%= k.renk %>">
+                <span class="kart-im" aria-hidden="true">▤</span>
+                <div class="kart-govde">
+                  <div class="kart-ad"><%= k.ad %></div>
+                  <div class="kart-alt"><%= k.aciklama || '' %></div>
+                </div>
+              </div>
+            <% }); %>
+          </div>
+        <% } %>
+
+        <% if (belgeler.length > 0) { %>
+          <div class="panel-baslik bosluk-ust"><span>BELGELER</span></div>
+          <div class="kart-liste">
+            <% belgeler.forEach(function (b) { %>
+              <a class="kart" href="/paylas/<%= token %>/belge/<%= b.id %>" data-renk="#a78bfa"
+                 data-gecis-yazi="BELGE ACILIYOR">
+                <span class="kart-im" aria-hidden="true">▧</span>
+                <div class="kart-govde">
+                  <div class="kart-ad"><%= b.baslik %></div>
+                  <div class="kart-alt"><%= b.imza ? 'imza: ' + b.imza : 'imzasiz' %></div>
+                </div>
+              </a>
+            <% }); %>
+          </div>
+        <% } %>
+
+        <% if (dosyalar.length > 0) { %>
+          <div class="panel-baslik bosluk-ust">
+            <span>DOSYALAR</span>
+            <span class="sag"><%= dosyalar.length %> kayit</span>
+          </div>
+
+          <% if (link && !link.indirmeyeIzin) { %>
+            <div class="uyari-kutu uyari-kutu--dikkat">
+              <span class="uyari-im" aria-hidden="true">!</span>
+              <span>Bu baglantida yalnizca goruntuleme izni var; indirme kapali.</span>
+            </div>
+          <% } %>
+
+          <div class="medya-izgara bosluk-ust">
+            <% dosyalar.forEach(function (d) {
+                 const uzanti = (String(d.mime_turu).split('/')[1] || '').toUpperCase();
+                 const onizlenebilir = /^image\/|^video\/|^audio\//.test(d.mime_turu) || d.mime_turu === 'application/pdf';
+            %>
+              <button type="button" class="medya-kart"
+                      data-medya-ac
+                      data-id="<%= d.id %>"
+                      data-ad="<%= d.ad %>"
+                      data-mime="<%= d.mime_turu %>"
+                      data-goruntule="/paylas/<%= token %>/dosya/<%= d.id %>/goruntule"
+                      data-indir="<%= (link && link.indirmeyeIzin) ? '/paylas/' + token + '/dosya/' + d.id + '/indir' : '' %>"
+                      data-onizlenebilir="<%= onizlenebilir ? '1' : '0' %>">
+                <span class="medya-kart-im" aria-hidden="true">
+                  <%= d.mime_turu.startsWith('image/') ? '🖼' : d.mime_turu.startsWith('video/') ? '🎞' : d.mime_turu.startsWith('audio/') ? '♪' : d.mime_turu === 'application/pdf' ? '▤' : '⬚' %>
+                </span>
+                <span class="medya-kart-ad tek-satir"><%= d.ad %></span>
+                <span class="medya-kart-alt"><%= uzanti %> · <%= (Number(d.boyut_bayt) / 1024).toFixed(0) %> KB</span>
+              </button>
+            <% }); %>
+          </div>
+        <% } %>
+
+        <% if (klasorler.length === 0 && dosyalar.length === 0 && belgeler.length === 0) { %>
+          <div class="bos"><span class="bos-im" aria-hidden="true">∅</span> Bu sektor bos.</div>
+        <% } %>
+
+        <div class="giris-alt">
+          <span>SALT OKUNUR</span><span>ERISIM KAYDEDILDI</span>
+        </div>
+      </section>
+    <% } %>
+
+  </div>
+</div>
+
+<%- include('partials/oynatici') %>
+
+<% const betikler = ['/js/oynatici.js']; %>
+<%- include('partials/son', { betikler: betikler }) %>

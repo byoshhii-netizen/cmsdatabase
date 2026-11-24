@@ -1,0 +1,56 @@
+<div class="kabuk">
+
+  <header class="ust-bar">
+    <div class="marka">
+      <span class="marka-isik" aria-hidden="true"></span>
+      <div>
+        <div class="marka-ad"><%= sistem.sistem_adi %></div>
+        <div class="marka-kod"><%= sistem.sistem_kodu %></div>
+      </div>
+    </div>
+
+    <div class="ust-sag">
+      <span class="saat mono-sayi" id="saat">--.--.---- --:--:--</span>
+      <button type="button" class="ses-dugme" id="ses-dugme" aria-pressed="true" title="Ses efektleri">◉</button>
+      <form method="post" action="/cikis" class="dugme-sirasi" data-gecis-yazi="BAGLANTI KAPATILIYOR">
+        <%- csrfAlani() %>
+        <button type="submit" class="dugme dugme--sonuk dugme--kucuk">
+          <span class="dugme-metin">CIKIS</span>
+        </button>
+      </form>
+    </div>
+  </header>
+
+  <div class="govde">
+
+    <nav class="yan-menu" aria-label="Ana gezinti">
+      <div class="menu-baslik">MODULLER</div>
+      <ul class="menu-liste">
+        <% const menu = [
+             { yol: '/merkez',  im: '▣', ad: 'Merkez' },
+             { yol: '/depo',    im: '▤', ad: 'Depo' },
+             { yol: '/pano',    im: '◈', ad: 'Pano' },
+             { yol: '/cambaz',  im: '◉', ad: 'Cambaz' },
+             { yol: '/loglar',  im: '≡', ad: 'Loglar' },
+             { yol: '/ayarlar', im: '⚙', ad: 'Ayarlar' }
+           ]; %>
+        <% menu.forEach(function (o) { %>
+          <li>
+            <a class="menu-bag <%= rota === o.yol ? 'etkin' : '' %>" href="<%= o.yol %>"
+               data-gecis-yazi="<%= o.ad.toUpperCase() %> YUKLENIYOR">
+              <span class="menu-im" aria-hidden="true"><%= o.im %></span>
+              <span><%= o.ad %></span>
+            </a>
+          </li>
+        <% }); %>
+      </ul>
+
+      <div class="panel bosluk-ust">
+        <div class="menu-baslik">OPERATOR</div>
+        <div class="kucuk zumrut"><%= yonetici ? yonetici.gorunenAd : '—' %></div>
+        <div class="kucuk sonuk"><%= yonetici ? '@' + yonetici.kullaniciAdi : '' %></div>
+        <div class="lamba lamba--aktif bosluk-ust">BAGLANTI AKTIF</div>
+      </div>
+    </nav>
+
+    <main class="icerik <%= locals.tamEkran ? 'icerik--tam' : '' %>">

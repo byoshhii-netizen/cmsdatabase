@@ -1,0 +1,124 @@
+<%- include('partials/bas') %>
+<%- include('partials/kabuk-ust') %>
+
+<div class="sayfa-basligi">
+  <div>
+    <div class="yol">// PANO</div>
+    <h1>STRATEJI PANOSU</h1>
+  </div>
+  <div class="sag dugme-sirasi">
+    <button type="button" class="dugme dugme--kucuk" data-modal-ac="modal-pano-yeni">
+      <span class="dugme-metin">+ YENI PANO</span>
+    </button>
+    <button type="button" class="dugme dugme--sonuk dugme--kucuk" data-modal-ac="modal-pano-ice-aktar">
+      <span class="dugme-metin">⇧ YEDEKTEN ICE AKTAR</span>
+    </button>
+  </div>
+</div>
+
+<% if (hata) { %>
+  <div class="uyari-kutu uyari-kutu--hata">
+    <span class="uyari-im" aria-hidden="true">!</span><span><%= hata %></span>
+  </div>
+<% } %>
+<% if (durum) { %>
+  <div class="uyari-kutu uyari-kutu--bilgi">
+    <span class="uyari-im" aria-hidden="true">i</span><span><%= durum %></span>
+  </div>
+<% } %>
+
+<section class="panel">
+  <div class="panel-baslik">
+    <span>KAYITLI PANOLAR</span>
+    <span class="sag"><%= panolar.length %> kayit</span>
+  </div>
+
+  <% if (panolar.length === 0) { %>
+    <div class="bos">
+      <span class="bos-im" aria-hidden="true">◈</span>
+      Henuz pano olusturulmadi.
+    </div>
+  <% } else { %>
+    <div class="kart-liste">
+      <% panolar.forEach(function (p) { %>
+        <div class="kart-sarmal">
+          <a class="kart" href="/pano/<%= p.id %>" data-renk="#22d3ee" data-gecis-yazi="PANO ACILIYOR">
+            <% if (p.onizleme) { %>
+              <img class="pano-onizleme" src="<%= p.onizleme %>" alt="" aria-hidden="true">
+            <% } else { %>
+              <span class="kart-im" aria-hidden="true">◈</span>
+            <% } %>
+            <div class="kart-govde">
+              <div class="kart-ad">
+                <%= p.ad %>
+                <% if (p.kilitli) { %><span class="etiket etiket--uyari kucuk">🔒 KİLİTLİ</span><% } %>
+              </div>
+              <div class="kart-alt"><%= p.aciklama || 'aciklama yok' %> · surum <%= p.surum %></div>
+            </div>
+            <div class="kart-sag">
+              <div class="mono-sayi"><%= p.oge_sayisi %></div>
+              <div>oge</div>
+            </div>
+          </a>
+          <form method="post" action="/pano/<%= p.id %>/sil" class="pano-sil-form"
+                data-onay="&quot;<%= p.ad %>&quot; panosunu kalici olarak silmek istediginize emin misiniz?">
+            <%- csrfAlani() %>
+            <button type="submit" class="dugme dugme--tehlike dugme--kucuk" title="Panoyu sil">✕</button>
+          </form>
+        </div>
+      <% }); %>
+    </div>
+  <% } %>
+</section>
+
+<!-- ------------------------------ Yeni Pano ------------------------------ -->
+<div class="modal-perde" id="modal-pano-yeni" aria-hidden="true">
+  <div class="modal-kutu">
+    <div class="modal-ust">
+      <span>YENI PANO</span>
+      <button type="button" class="modal-kapat" data-modal-kapat>✕</button>
+    </div>
+    <form method="post" action="/pano" class="modal-govde">
+      <%- csrfAlani() %>
+      <div class="alan">
+        <label class="alan-etiket" for="p-ad">PANO ADI</label>
+        <div class="girdi-sarmal"><input type="text" id="p-ad" name="ad" maxlength="150" required autofocus placeholder="orn. OPERASYON KARTRIDEX"></div>
+      </div>
+      <div class="alan">
+        <label class="alan-etiket" for="p-aciklama">ACIKLAMA</label>
+        <div class="girdi-sarmal"><input type="text" id="p-aciklama" name="aciklama" maxlength="500"></div>
+      </div>
+      <button type="submit" class="dugme dugme--tam"><span class="dugme-metin">OLUSTUR VE AC</span></button>
+    </form>
+  </div>
+</div>
+
+<!-- ------------------------------ Yedekten Ice Aktar ------------------------------ -->
+<div class="modal-perde" id="modal-pano-ice-aktar" aria-hidden="true">
+  <div class="modal-kutu">
+    <div class="modal-ust">
+      <span>YEDEKTEN ICE AKTAR</span>
+      <button type="button" class="modal-kapat" data-modal-kapat>✕</button>
+    </div>
+    <div class="modal-govde">
+      <p class="kucuk sonuk">
+        Daha once "⇩ YEDEK AL" ile indirilen <code>.json</code> dosyasini secin.
+        Dosya, mevcut panolara dokunmadan YENI bir pano olarak eklenir.
+      </p>
+      <label class="surukle-birak bosluk-ust" for="pano-liste-yedek-girdi">
+        <span class="surukle-im" aria-hidden="true">⇧</span>
+        <span>Yedek dosyasini (.json) secin</span>
+        <span class="kucuk sonuk" id="pano-liste-yedek-ad">dosya secilmedi</span>
+        <input type="file" id="pano-liste-yedek-girdi" accept="application/json,.json" class="sr-only">
+      </label>
+      <button type="button" id="pano-liste-ice-aktar-dugme" class="dugme dugme--tam bosluk-ust" disabled>
+        <span class="dugme-metin">ICE AKTAR</span>
+      </button>
+      <div class="uyari-kutu uyari-kutu--hata gizli bosluk-ust" id="pano-liste-ice-aktar-hata"></div>
+    </div>
+  </div>
+</div>
+
+<%- include('partials/kabuk-alt') %>
+<% const betikler = ['/js/pano-liste.js']; %>
+<%- include('partials/son', { betikler: betikler }) %>

@@ -1,0 +1,144 @@
+<%- include('partials/bas') %>
+<%- include('partials/kabuk-ust') %>
+
+<div class="sayfa-basligi">
+  <div>
+    <div class="yol">// MERKEZ</div>
+    <h1>KONTROL MERKEZI</h1>
+  </div>
+  <div class="sag">
+    <span class="lamba lamba--aktif">TUM SISTEMLER CALISIYOR</span>
+  </div>
+</div>
+
+<section class="izgara izgara--4">
+  <div class="olcer">
+    <div class="olcer-etiket">KLASOR</div>
+    <div class="olcer-deger mono-sayi"><%= sayimlar.klasor || 0 %></div>
+    <div class="olcer-alt">kayitli sektor</div>
+  </div>
+
+  <div class="olcer olcer--cam">
+    <div class="olcer-etiket">DOSYA</div>
+    <div class="olcer-deger mono-sayi"><%= sayimlar.dosya || 0 %></div>
+    <div class="olcer-alt">
+      <%
+        const bayt = Number(sayimlar.toplam_bayt || 0);
+        const mb = bayt / (1024 * 1024);
+        const gosterim = mb >= 1024 ? (mb / 1024).toFixed(2) + ' GB' : mb.toFixed(2) + ' MB';
+      %>
+      <%= gosterim %> sifreli
+    </div>
+  </div>
+
+  <div class="olcer">
+    <div class="olcer-etiket">PANO</div>
+    <div class="olcer-deger mono-sayi"><%= sayimlar.pano || 0 %></div>
+    <div class="olcer-alt">strateji tuvali</div>
+  </div>
+
+  <div class="olcer <%= (ozet.aktif_kilit || kilitSayisi) ? 'olcer--tehlike' : 'olcer--uyari' %>">
+    <div class="olcer-etiket">AKTIF KILIT</div>
+    <div class="olcer-deger mono-sayi"><%= kilitSayisi || 0 %></div>
+    <div class="olcer-alt">engellenen adres</div>
+  </div>
+</section>
+
+<section class="izgara izgara--2 izgara--genis">
+
+  <div class="panel">
+    <div class="panel-baslik">
+      <span>SON OLAYLAR</span>
+      <span class="sag"><a href="/loglar">tumu &rsaquo;</a></span>
+    </div>
+
+    <% if (!sonLoglar || sonLoglar.length === 0) { %>
+      <div class="bos">
+        <span class="bos-im" aria-hidden="true">≡</span>
+        Henuz kayit yok.
+      </div>
+    <% } else { %>
+      <div class="tablo-sarmal">
+        <table class="veri">
+          <thead>
+            <tr>
+              <th>ZAMAN</th>
+              <th>SEVIYE</th>
+              <th>KATEGORI</th>
+              <th>OLAY</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% sonLoglar.forEach(function (k) { %>
+              <tr>
+                <td class="zaman"><%= new Date(k.olusturuldu_at).toLocaleString('tr-TR') %></td>
+                <td>
+                  <% const s = k.seviye; %>
+                  <span class="etiket <%= s === 'kritik' || s === 'hata' ? 'etiket--hata' : s === 'uyari' ? 'etiket--uyari' : 'etiket--sonuk' %>"><%= s %></span>
+                </td>
+                <td class="sonuk"><%= k.kategori %></td>
+                <td class="tek-satir"><%= k.olay %><% if (k.mesaj) { %> <span class="sonuk">— <%= k.mesaj %></span><% } %></td>
+              </tr>
+            <% }); %>
+          </tbody>
+        </table>
+      </div>
+    <% } %>
+  </div>
+
+  <div class="panel">
+    <div class="panel-baslik"><span>SISTEM OZETI</span></div>
+
+    <div class="kart-liste">
+      <div class="kart" data-renk="#00ff9c">
+        <span class="kart-im" aria-hidden="true">≡</span>
+        <div class="kart-govde">
+          <div class="kart-ad">TOPLAM KAYIT</div>
+          <div class="kart-alt">son 24 saat: <%= ozet.gunluk || 0 %></div>
+        </div>
+        <div class="kart-sag mono-sayi"><%= ozet.toplam_log || 0 %></div>
+      </div>
+
+      <div class="kart" data-renk="#ff3b5c">
+        <span class="kart-im" aria-hidden="true">!</span>
+        <div class="kart-govde">
+          <div class="kart-ad">HATA / KRITIK</div>
+          <div class="kart-alt">incelenmesi gereken olay</div>
+        </div>
+        <div class="kart-sag mono-sayi"><%= ozet.hata_sayisi || 0 %></div>
+      </div>
+
+      <div class="kart" data-renk="#ffb627">
+        <span class="kart-im" aria-hidden="true">✕</span>
+        <div class="kart-govde">
+          <div class="kart-ad">BASARISIZ GIRIS</div>
+          <div class="kart-alt">son 24 saat</div>
+        </div>
+        <div class="kart-sag mono-sayi"><%= ozet.basarisiz_giris || 0 %></div>
+      </div>
+
+      <div class="kart" data-renk="#22d3ee">
+        <span class="kart-im" aria-hidden="true">↗</span>
+        <div class="kart-govde">
+          <div class="kart-ad">AKTIF PAYLASIM</div>
+          <div class="kart-alt">disa acik baglanti</div>
+        </div>
+        <div class="kart-sag mono-sayi"><%= sayimlar.paylasim || 0 %></div>
+      </div>
+    </div>
+
+    <div class="panel-baslik bosluk-ust"><span>MODUL DURUMU</span></div>
+    <div class="terminal">
+      <div class="terminal-satir terminal-satir--tamam">kimlik  : argon2id + oturum dogrulama AKTIF</div>
+      <div class="terminal-satir terminal-satir--tamam">depo    : sema hazir, arayuz bekleniyor</div>
+      <div class="terminal-satir terminal-satir--tamam">pano    : sema hazir, tuval bekleniyor</div>
+      <div class="terminal-satir terminal-satir--tamam">cambaz  : sema hazir, motor bekleniyor</div>
+      <div class="terminal-satir terminal-satir--tamam">loglar  : kayit akisi AKTIF</div>
+      <div class="terminal-satir terminal-satir--cikti">bekleniyor<span class="imlec"></span></div>
+    </div>
+  </div>
+
+</section>
+
+<%- include('partials/kabuk-alt') %>
+<%- include('partials/son') %>

@@ -1,0 +1,78 @@
+<%- include('partials/bas') %>
+<%- include('partials/kabuk-ust') %>
+
+<div class="pano-editor"
+     id="pano-editor"
+     data-pano-id="<%= pano.id %>"
+     data-surum="<%= pano.surum %>"
+     data-kilitli="<%= pano.kilitli ? '1' : '0' %>"
+     data-resim-max-mb="<%= panoAyar.resimMaxMb %>">
+
+  <div class="pano-ust-serit">
+    <a class="dugme dugme--sonuk dugme--kucuk" href="/pano" data-gecis-yazi="PANOLAR YUKLENIYOR">
+      <span class="dugme-metin">&lsaquo; PANOLAR</span>
+    </a>
+
+    <input type="text" id="pano-ad-girdi" class="pano-ad-girdi" value="<%= pano.ad %>" maxlength="150" aria-label="Pano adi">
+
+    <div class="pano-durum-grup">
+      <span class="lamba lamba--aktif" id="pano-kayit-lamba">KAYITLI</span>
+      <span class="etiket etiket--uyari <%= pano.kilitli ? '' : 'gizli' %>" id="pano-kilit-etiket">🔒 KİLİTLİ</span>
+    </div>
+
+    <div class="dugme-sirasi pano-ust-aksiyonlar">
+      <button type="button" class="dugme dugme--sonuk dugme--kucuk" data-pano-aksiyon="geri-al" title="Geri al (Ctrl+Z)">↶ GERI AL</button>
+      <button type="button" class="dugme dugme--sonuk dugme--kucuk" data-pano-aksiyon="ileri-al" title="Ileri al (Ctrl+Shift+Z)">↷ ILERI AL</button>
+      <button type="button" class="dugme dugme--sonuk dugme--kucuk" data-pano-aksiyon="kilit" title="Tum panoyu kilitle/kaldir">⚿ KİLİT</button>
+      <button type="button" class="dugme dugme--sonuk dugme--kucuk" data-pano-aksiyon="disa-aktar" title="JSON olarak tam yedek indir">⇩ YEDEK AL</button>
+      <button type="button" class="dugme dugme--sonuk dugme--kucuk" data-pano-aksiyon="ice-aktar" title="Yedekten yeni pano olustur">⇧ GERI YUKLE</button>
+    </div>
+  </div>
+
+  <div class="pano-govde">
+    <div class="pano-arac-cubugu" id="pano-arac-cubugu" role="toolbar" aria-label="Cizim araclari">
+      <button type="button" class="arac-dugme etkin" data-arac="secici" title="Sec / tasi (V)">⌖</button>
+      <button type="button" class="arac-dugme" data-arac="el" title="Kaydir (H)">✋</button>
+      <button type="button" class="arac-dugme" data-arac="kalem" title="Serbest kalem (P)">✎</button>
+      <button type="button" class="arac-dugme" data-arac="cizgi" title="Cizgi (L)">╱</button>
+      <button type="button" class="arac-dugme" data-arac="ok" title="Ok (A)">↗</button>
+      <button type="button" class="arac-dugme" data-arac="dikdortgen" title="Dikdortgen (R)">▭</button>
+      <button type="button" class="arac-dugme" data-arac="elips" title="Elips (O)">◯</button>
+      <button type="button" class="arac-dugme" data-arac="metin" title="Metin (T)">A</button>
+      <button type="button" class="arac-dugme" data-arac="not" title="Yapiskan not (N)">▤</button>
+      <button type="button" class="arac-dugme" data-arac="resim" title="Resim ekle (I)">🖼</button>
+      <hr>
+      <input type="color" id="pano-renk" value="#00ff9c" title="Renk">
+      <input type="range" id="pano-kalinlik" min="1" max="24" value="3" title="Cizgi kalinligi">
+      <hr>
+      <button type="button" class="arac-dugme" data-pano-aksiyon="uzaklastir" title="Uzaklastir (-)">−</button>
+      <span id="pano-zoom-yuzde" class="kucuk mono-sayi">100%</span>
+      <button type="button" class="arac-dugme" data-pano-aksiyon="yakinlastir" title="Yakinlastir (+)">+</button>
+      <button type="button" class="arac-dugme" data-pano-aksiyon="sifirla-gorunum" title="Gorunumu sifirla (0)">⊙</button>
+    </div>
+
+    <div class="pano-tuval-sarmal" id="pano-tuval-sarmal" data-arac="secici">
+      <canvas id="pano-tuval" aria-label="Cizim tuvali"></canvas>
+
+      <div class="pano-metin-katmani" id="pano-metin-katmani"></div>
+
+      <div class="pano-mini-arac gizli" id="pano-mini-arac">
+        <button type="button" data-pano-aksiyon="oge-kilit" title="Kilitle / kilidi ac">🔒</button>
+        <button type="button" data-pano-aksiyon="one-al" title="One al">⬆</button>
+        <button type="button" data-pano-aksiyon="arkaya-gonder" title="Arkaya gonder">⬇</button>
+        <button type="button" data-pano-aksiyon="oge-sil" title="Sil">✕</button>
+      </div>
+
+      <div class="pano-kilitli-perde gizli" id="pano-kilitli-perde">
+        <span>🔒 PANO KİLİTLİ — SALT OKUNUR</span>
+      </div>
+    </div>
+  </div>
+
+  <input type="file" id="pano-resim-girdi" class="sr-only" accept="image/png,image/jpeg,image/gif,image/webp" aria-hidden="true">
+  <input type="file" id="pano-yedek-girdi" class="sr-only" accept="application/json,.json" aria-hidden="true">
+</div>
+
+<%- include('partials/kabuk-alt') %>
+<% const betikler = ['/js/pano.js']; %>
+<%- include('partials/son', { betikler: betikler }) %>

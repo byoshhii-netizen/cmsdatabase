@@ -1,0 +1,28 @@
+<%- include('../partials/bas') %>
+
+<div class="orta-sahne">
+  <div class="hata-kutu">
+    <div class="hata-kod glitch" data-metin="<%= kod %>"><%= kod %></div>
+
+    <section class="panel panel--vurgu">
+      <h1><%= baslik %></h1>
+      <p class="sonuk"><%= mesaj %></p>
+
+      <div class="terminal">
+        <div class="terminal-satir terminal-satir--hata">durum: <%= kod %></div>
+        <div class="terminal-satir terminal-satir--cikti">rota : <%= locals.rota || '—' %></div>
+        <div class="terminal-satir terminal-satir--cikti">olay kaydedildi<span class="imlec"></span></div>
+      </div>
+
+      <div class="dugme-sirasi bosluk-ust">
+        <% if (girisYapildi) { %>
+          <a class="dugme" href="/merkez"><span class="dugme-metin">MERKEZE DON</span></a>
+        <% } else { %>
+          <a class="dugme" href="/giris"><span class="dugme-metin">GIRIS EKRANI</span></a>
+        <% } %>
+      </div>
+    </section>
+  </div>
+</div>
+
+<%- include('../partials/son') %>

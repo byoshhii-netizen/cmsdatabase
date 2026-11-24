@@ -1,0 +1,380 @@
+<%- include('partials/bas') %>
+<%- include('partials/kabuk-ust') %>
+
+<div class="sayfa-basligi">
+  <div>
+    <div class="yol">// LOGLAR</div>
+    <h1>IZLEME KAYITLARI</h1>
+  </div>
+  <div class="sag"><span class="lamba lamba--aktif">KAYIT AKISI AKTIF</span></div>
+</div>
+
+<section class="izgara izgara--4">
+  <div class="olcer">
+    <div class="olcer-etiket">TOPLAM</div>
+    <div class="olcer-deger mono-sayi"><%= ozet.toplam_log || 0 %></div>
+    <div class="olcer-alt">kayit</div>
+  </div>
+  <div class="olcer olcer--cam">
+    <div class="olcer-etiket">SON 24 SAAT</div>
+    <div class="olcer-deger mono-sayi"><%= ozet.gunluk || 0 %></div>
+    <div class="olcer-alt">olay</div>
+  </div>
+  <div class="olcer olcer--tehlike">
+    <div class="olcer-etiket">HATA/KRITIK</div>
+    <div class="olcer-deger mono-sayi"><%= ozet.hata_sayisi || 0 %></div>
+    <div class="olcer-alt">inceleme gerekli</div>
+  </div>
+  <div class="olcer olcer--uyari">
+    <div class="olcer-etiket">AKTIF KILIT</div>
+    <div class="olcer-deger mono-sayi"><%= kilitler.length %></div>
+    <div class="olcer-alt">engelli adres</div>
+  </div>
+</section>
+
+<section class="panel">
+  <div class="panel-baslik"><span>FILTRE</span></div>
+  <form method="get" action="/loglar" data-gecis-yazi="FILTRE UYGULANIYOR">
+    <div class="izgara izgara--3">
+      <div class="alan">
+        <label class="alan-etiket" for="f-seviye">SEVIYE</label>
+        <select id="f-seviye" name="seviye">
+          <option value="">tumu</option>
+          <% seviyeler.forEach(function (s) { %>
+            <option value="<%= s %>" <%= filtre.seviye === s ? 'selected' : '' %>><%= s %></option>
+          <% }); %>
+        </select>
+      </div>
+      <div class="alan">
+        <label class="alan-etiket" for="f-kategori">KATEGORI</label>
+        <select id="f-kategori" name="kategori">
+          <option value="">tumu</option>
+          <% kategoriler.forEach(function (k) { %>
+            <option value="<%= k %>" <%= filtre.kategori === k ? 'selected' : '' %>><%= k %></option>
+          <% }); %>
+        </select>
+      </div>
+      <div class="alan">
+        <label class="alan-etiket" for="f-arama">ARAMA</label>
+        <div class="girdi-sarmal">
+          <input type="search" id="f-arama" name="arama" value="<%= filtre.arama %>"
+                 placeholder="olay, mesaj veya rota" maxlength="80">
+        </div>
+      </div>
+    </div>
+    <div class="dugme-sirasi">
+      <button type="submit" class="dugme dugme--kucuk"><span class="dugme-metin">UYGULA</span></button>
+      <a class="dugme dugme--sonuk dugme--kucuk" href="/loglar"><span class="dugme-metin">SIFIRLA</span></a>
+    </div>
+  </form>
+</section>
+
+<section class="panel">
+  <div class="panel-baslik">
+    <span>KAYITLAR</span>
+    <span class="sag"><%= liste.toplam %> sonuc · sayfa <%= sayfa %>/<%= sayfaSayisi %></span>
+  </div>
+
+  <% if (liste.kayitlar.length === 0) { %>
+    <div class="bos"><span class="bos-im" aria-hidden="true">∅</span> Filtreye uyan kayit yok.</div>
+  <% } else { %>
+    <div class="tablo-sarmal">
+      <table class="veri">
+        <thead>
+          <tr>
+            <th>ZAMAN</th><th>SEVIYE</th><th>KATEGORI</th><th>OLAY</th>
+            <th>ROTA</th><th>IP</th><th>OPERATOR</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% liste.kayitlar.forEach(function (k) { %>
+            <tr>
+              <td class="zaman"><%= new Date(k.olusturuldu_at).toLocaleString('tr-TR') %></td>
+              <td>
+                <span class="etiket <%= (k.seviye === 'kritik' || k.seviye === 'hata') ? 'etiket--hata' : k.seviye === 'uyari' ? 'etiket--uyari' : 'etiket--sonuk' %>"><%= k.seviye %></span>
+              </td>
+              <td class="sonuk"><%= k.kategori %></td>
+              <td class="tek-satir">
+                <%= k.olay %>
+                <% if (k.mesaj) { %><div class="kucuk sonuk"><%= k.mesaj %></div><% } %>
+              </td>
+              <td class="sonuk tek-satir"><%= k.metot || '' %> <%= k.rota || '—' %></td>
+              <td class="sonuk mono-sayi"><%= k.ip || '—' %></td>
+              <td class="sonuk"><%= k.kullanici_adi || '—' %></td>
+            </tr>
+          <% }); %>
+        </tbody>
+      </table>
+    </div>
+
+    <% if (sayfaSayisi > 1) { %>
+      <%
+        const temelSorgu = [];
+        if (filtre.seviye) temelSorgu.push('seviye=' + encodeURIComponent(filtre.seviye));
+        if (filtre.kategori) temelSorgu.push('kategori=' + encodeURIComponent(filtre.kategori));
+        if (filtre.arama) temelSorgu.push('arama=' + encodeURIComponent(filtre.arama));
+        const ek = temelSorgu.length ? '&' + temelSorgu.join('&') : '';
+      %>
+      <div class="dugme-sirasi bosluk-ust">
+        <% if (sayfa > 1) { %>
+          <a class="dugme dugme--sonuk dugme--kucuk" href="/loglar?sayfa=<%= sayfa - 1 %><%= ek %>">
+            <span class="dugme-metin">&lsaquo; ONCEKI</span>
+          </a>
+        <% } %>
+        <% if (sayfa < sayfaSayisi) { %>
+          <a class="dugme dugme--sonuk dugme--kucuk" href="/loglar?sayfa=<%= sayfa + 1 %><%= ek %>">
+            <span class="dugme-metin">SONRAKI &rsaquo;</span>
+          </a>
+        <% } %>
+      </div>
+    <% } %>
+  <% } %>
+</section>
+
+<section class="izgara izgara--2">
+  <div class="panel">
+    <div class="panel-baslik">
+      <span>SON GIRIS DENEMELERI</span>
+      <span class="sag"><%= denemeler.length %></span>
+    </div>
+    <% if (denemeler.length === 0) { %>
+      <div class="bos">Kayit yok.</div>
+    <% } else { %>
+      <div class="tablo-sarmal">
+        <table class="veri">
+          <thead><tr><th>ZAMAN</th><th>KIMLIK</th><th>IP</th><th>SONUC</th></tr></thead>
+          <tbody>
+            <% denemeler.forEach(function (d) { %>
+              <tr>
+                <td class="zaman"><%= new Date(d.olusturuldu_at).toLocaleString('tr-TR') %></td>
+                <td class="sonuk"><%= d.kullanici_adi || '—' %></td>
+                <td class="sonuk mono-sayi"><%= d.ip %></td>
+                <td>
+                  <span class="etiket <%= d.basarili ? '' : 'etiket--hata' %>">
+                    <%= d.basarili ? 'TAMAM' : (d.sebep || 'RED') %>
+                  </span>
+                </td>
+              </tr>
+            <% }); %>
+          </tbody>
+        </table>
+      </div>
+    <% } %>
+  </div>
+
+  <div class="panel">
+    <div class="panel-baslik">
+      <span>AKTIF KILITLER</span>
+      <span class="sag"><%= kilitler.length %></span>
+    </div>
+    <% if (kilitler.length === 0) { %>
+      <div class="bos"><span class="bos-im" aria-hidden="true">✓</span> Kilitli adres yok.</div>
+    <% } else { %>
+      <div class="tablo-sarmal">
+        <table class="veri">
+          <thead><tr><th>IP</th><th>BASARISIZ</th><th>KILIT BITIS</th></tr></thead>
+          <tbody>
+            <% kilitler.forEach(function (k) { %>
+              <tr>
+                <td class="mono-sayi"><%= k.ip %></td>
+                <td class="mono-sayi kirmizi-metin"><%= k.basarisiz_sayi %></td>
+                <td class="zaman"><%= new Date(k.kilit_bitis_at).toLocaleString('tr-TR') %></td>
+              </tr>
+            <% }); %>
+          </tbody>
+        </table>
+      </div>
+    <% } %>
+  </div>
+</section>
+
+<!-- ======================== DIS ERISIM ISTIHBARATI ======================== -->
+<div class="sayfa-basligi bosluk-ust">
+  <div>
+    <div class="yol">// DIS ERISIM</div>
+    <h1>PAYLASIM IZLERI</h1>
+  </div>
+  <div class="sag"><span class="lamba lamba--aktif">CANLI KAYIT</span></div>
+</div>
+
+<section class="izgara izgara--4">
+  <div class="olcer">
+    <div class="olcer-etiket">TOPLAM ERISIM</div>
+    <div class="olcer-deger mono-sayi"><%= erisimOzet.toplam_erisim || 0 %></div>
+    <div class="olcer-alt">kayitli olay</div>
+  </div>
+  <div class="olcer olcer--cam">
+    <div class="olcer-etiket">BENZERSIZ IP</div>
+    <div class="olcer-deger mono-sayi"><%= erisimOzet.benzersiz_ip || 0 %></div>
+    <div class="olcer-alt">farkli kaynak</div>
+  </div>
+  <div class="olcer">
+    <div class="olcer-etiket">SON 24 SAAT</div>
+    <div class="olcer-deger mono-sayi"><%= erisimOzet.son_24_saat || 0 %></div>
+    <div class="olcer-alt">yeni olay</div>
+  </div>
+  <div class="olcer olcer--uyari">
+    <div class="olcer-etiket">SIFRE HATASI</div>
+    <div class="olcer-deger mono-sayi"><%= erisimOzet.sifre_hatasi || 0 %></div>
+    <div class="olcer-alt">reddedilen deneme</div>
+  </div>
+</section>
+
+<section class="izgara izgara--2">
+  <div class="panel">
+    <div class="panel-baslik"><span>EN COK ERISILEN BAGLANTILAR</span></div>
+    <% if (!erisimOzet.enCokGorulen || erisimOzet.enCokGorulen.length === 0) { %>
+      <div class="bos">Henuz dis erisim kaydi yok.</div>
+    <% } else { %>
+      <div class="kart-liste">
+        <% erisimOzet.enCokGorulen.forEach(function (e) { %>
+          <div class="kart" data-renk="#22d3ee">
+            <span class="kart-im" aria-hidden="true">↗</span>
+            <div class="kart-govde">
+              <div class="kart-ad tek-satir"><%= e.baslik || e.hedef_adi || 'adsiz' %></div>
+              <div class="kart-alt mono-sayi"><%= e.token.slice(0, 12) %>…</div>
+            </div>
+            <div class="kart-sag">
+              <div class="mono-sayi"><%= e.erisim_sayisi %></div>
+              <div>erisim</div>
+            </div>
+          </div>
+        <% }); %>
+      </div>
+    <% } %>
+  </div>
+
+  <div class="panel">
+    <div class="panel-baslik"><span>EN COK GORUNTULENEN DOSYALAR</span></div>
+    <% if (!erisimOzet.enCokGorulenDosya || erisimOzet.enCokGorulenDosya.length === 0) { %>
+      <div class="bos">Henuz dosya goruntulenmedi.</div>
+    <% } else { %>
+      <div class="kart-liste">
+        <% erisimOzet.enCokGorulenDosya.forEach(function (d) { %>
+          <div class="kart" data-renk="#ffb627">
+            <span class="kart-im" aria-hidden="true">
+              <%= d.mime_turu.startsWith('image/') ? '🖼' : d.mime_turu.startsWith('video/') ? '🎞' : '📄' %>
+            </span>
+            <div class="kart-govde">
+              <div class="kart-ad tek-satir"><%= d.ad %></div>
+              <div class="kart-alt">goruntuleme <%= d.goruntuleme_sayisi %> · indirme <%= d.indirme_sayisi %></div>
+            </div>
+            <div class="kart-sag">
+              <div class="mono-sayi"><%= d.toplam %></div>
+              <div>toplam</div>
+            </div>
+          </div>
+        <% }); %>
+      </div>
+    <% } %>
+  </div>
+</section>
+
+<section class="panel">
+  <div class="panel-baslik"><span>FILTRE</span></div>
+  <form method="get" action="/loglar" data-gecis-yazi="FILTRE UYGULANIYOR">
+    <div class="izgara izgara--3">
+      <div class="alan">
+        <label class="alan-etiket" for="e-eylem">EYLEM</label>
+        <select id="e-eylem" name="e_eylem">
+          <option value="">tumu</option>
+          <% erisimEylemleri.forEach(function (e) { %>
+            <option value="<%= e %>" <%= erisimFiltre.eylem === e ? 'selected' : '' %>><%= e %></option>
+          <% }); %>
+        </select>
+      </div>
+      <div class="alan">
+        <label class="alan-etiket" for="e-cihaz">CIHAZ TURU</label>
+        <select id="e-cihaz" name="e_cihaz">
+          <option value="">tumu</option>
+          <% cihazTipleri.forEach(function (c) { %>
+            <option value="<%= c %>" <%= erisimFiltre.cihaz === c ? 'selected' : '' %>><%= c %></option>
+          <% }); %>
+        </select>
+      </div>
+      <div class="alan">
+        <label class="alan-etiket" for="e-arama">ARAMA</label>
+        <div class="girdi-sarmal">
+          <input type="search" id="e-arama" name="e_arama" value="<%= erisimFiltre.arama %>"
+                 placeholder="IP, baslik veya dosya adi" maxlength="80">
+        </div>
+      </div>
+    </div>
+    <input type="hidden" name="seviye" value="<%= filtre.seviye %>">
+    <input type="hidden" name="kategori" value="<%= filtre.kategori %>">
+    <input type="hidden" name="arama" value="<%= filtre.arama %>">
+    <div class="dugme-sirasi">
+      <button type="submit" class="dugme dugme--kucuk"><span class="dugme-metin">UYGULA</span></button>
+      <a class="dugme dugme--sonuk dugme--kucuk" href="/loglar"><span class="dugme-metin">SIFIRLA</span></a>
+    </div>
+  </form>
+</section>
+
+<section class="panel">
+  <div class="panel-baslik">
+    <span>ERISIM KAYITLARI</span>
+    <span class="sag"><%= erisimListe.toplam %> sonuc · sayfa <%= erisimSayfa %>/<%= erisimSayfaSayisi %></span>
+  </div>
+
+  <% if (erisimListe.kayitlar.length === 0) { %>
+    <div class="bos"><span class="bos-im" aria-hidden="true">∅</span> Filtreye uyan dis erisim kaydi yok.</div>
+  <% } else { %>
+    <div class="tablo-sarmal">
+      <table class="veri">
+        <thead>
+          <tr>
+            <th>ZAMAN</th><th>HEDEF</th><th>EYLEM</th><th>IP</th>
+            <th>CIHAZ</th><th>ISLETIM SIST.</th><th>TARAYICI</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% erisimListe.kayitlar.forEach(function (e) { %>
+            <tr>
+              <td class="zaman"><%= new Date(e.olusturuldu_at).toLocaleString('tr-TR') %></td>
+              <td class="tek-satir">
+                <%= e.dosya_adi || e.belge_baslik || e.link_baslik || e.link_hedef || '—' %>
+                <% if (e.dosya_adi || e.belge_baslik) { %>
+                  <div class="kucuk sonuk tek-satir">baglanti: <%= e.link_baslik || e.link_hedef %></div>
+                <% } %>
+              </td>
+              <td>
+                <span class="etiket <%= e.eylem === 'sifre_hatasi' || e.eylem === 'reddedildi' ? 'etiket--hata' : e.eylem === 'indirme' ? 'etiket--cam' : 'etiket--sonuk' %>">
+                  <%= e.eylem %>
+                </span>
+              </td>
+              <td class="mono-sayi sonuk"><%= e.ip || '—' %></td>
+              <td class="sonuk"><%= e.cihaz_tipi || '—' %></td>
+              <td class="sonuk"><%= e.isletim_sistemi || '—' %></td>
+              <td class="sonuk tek-satir"><%= e.tarayici || '—' %></td>
+            </tr>
+          <% }); %>
+        </tbody>
+      </table>
+    </div>
+
+    <% if (erisimSayfaSayisi > 1) { %>
+      <%
+        const eSorgu = [];
+        if (erisimFiltre.eylem) eSorgu.push('e_eylem=' + encodeURIComponent(erisimFiltre.eylem));
+        if (erisimFiltre.cihaz) eSorgu.push('e_cihaz=' + encodeURIComponent(erisimFiltre.cihaz));
+        if (erisimFiltre.arama) eSorgu.push('e_arama=' + encodeURIComponent(erisimFiltre.arama));
+        const eEk = eSorgu.length ? '&' + eSorgu.join('&') : '';
+      %>
+      <div class="dugme-sirasi bosluk-ust">
+        <% if (erisimSayfa > 1) { %>
+          <a class="dugme dugme--sonuk dugme--kucuk" href="/loglar?e_sayfa=<%= erisimSayfa - 1 %><%= eEk %>#dis-erisim">
+            <span class="dugme-metin">&lsaquo; ONCEKI</span>
+          </a>
+        <% } %>
+        <% if (erisimSayfa < erisimSayfaSayisi) { %>
+          <a class="dugme dugme--sonuk dugme--kucuk" href="/loglar?e_sayfa=<%= erisimSayfa + 1 %><%= eEk %>#dis-erisim">
+            <span class="dugme-metin">SONRAKI &rsaquo;</span>
+          </a>
+        <% } %>
+      </div>
+    <% } %>
+  <% } %>
+</section>
+
+<%- include('partials/kabuk-alt') %>
+<%- include('partials/son') %>

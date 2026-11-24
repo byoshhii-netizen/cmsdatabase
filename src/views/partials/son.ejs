@@ -1,0 +1,9 @@
+  <script src="/js/ses.js"></script>
+  <script src="/js/matrix.js"></script>
+  <script src="/js/gecis.js"></script>
+  <script src="/js/cekirdek.js"></script>
+<% (locals.betikler || []).forEach(function (yol) { %>
+  <script src="<%= yol %>"></script>
+<% }); %>
+</body>
+</html>

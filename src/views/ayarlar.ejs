@@ -1,0 +1,344 @@
+<%- include('partials/bas') %>
+<%- include('partials/kabuk-ust') %>
+
+<div class="sayfa-basligi">
+  <div>
+    <div class="yol">// AYARLAR</div>
+    <h1>SISTEM AYARLARI</h1>
+  </div>
+  <div class="sag"><span class="lamba lamba--aktif">YETKI: BAS OPERATOR</span></div>
+</div>
+
+<% if (locals.hata) { %>
+  <div class="uyari-kutu uyari-kutu--hata">
+    <span class="uyari-im" aria-hidden="true">!</span><span><%= hata %></span>
+  </div>
+<% } %>
+
+<% if (locals.bildirim) { %>
+  <div class="uyari-kutu uyari-kutu--bilgi">
+    <span class="uyari-im" aria-hidden="true">i</span><span><%= bildirim %></span>
+  </div>
+<% } %>
+
+<section class="izgara izgara--2 izgara--genis">
+
+  <!-- ============================ ANA SIFRE ============================ -->
+  <div class="panel panel--vurgu">
+    <div class="panel-baslik">
+      <span>ANA SIFRE DEGISTIR</span>
+      <span class="sag">ARGON2ID</span>
+    </div>
+
+    <div class="uyari-kutu uyari-kutu--dikkat">
+      <span class="uyari-im" aria-hidden="true">!</span>
+      <span>Sifre degistiginde diger tum cihazlardaki oturumlar kapatilir.</span>
+    </div>
+
+    <div class="uyari-kutu gizli bosluk-ust" id="sifre-sonuc" role="status"></div>
+
+    <form method="post" action="/ayarlar/sifre" id="sifre-form" class="bosluk-ust" autocomplete="off">
+      <%- csrfAlani() %>
+
+      <div class="alan">
+        <label class="alan-etiket" for="mevcut_sifre">MEVCUT SIFRE</label>
+        <div class="girdi-sarmal">
+          <input type="password" id="mevcut_sifre" name="mevcut_sifre"
+                 autocomplete="current-password" maxlength="200" required>
+        </div>
+      </div>
+
+      <div class="alan">
+        <label class="alan-etiket" for="yeni_sifre">YENI SIFRE</label>
+        <div class="girdi-sarmal">
+          <input type="password" id="yeni_sifre" name="yeni_sifre"
+                 autocomplete="new-password" minlength="10" maxlength="200" required>
+        </div>
+        <div class="guc-cubuk" id="guc-cubuk" aria-hidden="true">
+          <span class="guc-dilim"></span><span class="guc-dilim"></span><span class="guc-dilim"></span>
+          <span class="guc-dilim"></span><span class="guc-dilim"></span>
+        </div>
+        <div class="kucuk sonuk" id="guc-etiket">—</div>
+        <div class="ipucu">En az 10 karakter, en az bir harf ve bir rakam icermeli.</div>
+      </div>
+
+      <div class="alan">
+        <label class="alan-etiket" for="yeni_sifre_tekrar">YENI SIFRE (TEKRAR)</label>
+        <div class="girdi-sarmal">
+          <input type="password" id="yeni_sifre_tekrar" name="yeni_sifre_tekrar"
+                 autocomplete="new-password" minlength="10" maxlength="200" required>
+        </div>
+        <div class="kucuk" id="eslesme-notu"></div>
+      </div>
+
+      <button type="submit" class="dugme dugme--tam">
+        <span aria-hidden="true">⚿</span><span class="dugme-metin">SIFREYI GUNCELLE</span>
+      </button>
+    </form>
+  </div>
+
+  <!-- ============================= HESAP ============================== -->
+  <div class="panel">
+    <div class="panel-baslik"><span>HESAP BILGISI</span></div>
+
+    <div class="kart-liste">
+      <div class="kart" data-renk="#00ff9c">
+        <span class="kart-im" aria-hidden="true">◈</span>
+        <div class="kart-govde">
+          <div class="kart-ad"><%= hesap ? hesap.gorunen_ad : '—' %></div>
+          <div class="kart-alt">@<%= hesap ? hesap.kullanici_adi : '—' %></div>
+        </div>
+      </div>
+
+      <div class="kart" data-renk="#22d3ee">
+        <span class="kart-im" aria-hidden="true">⏱</span>
+        <div class="kart-govde">
+          <div class="kart-ad">SON GIRIS</div>
+          <div class="kart-alt">
+            <%= hesap && hesap.son_giris_at ? new Date(hesap.son_giris_at).toLocaleString('tr-TR') : 'kayit yok' %>
+            <% if (hesap && hesap.son_giris_ip) { %> · <%= hesap.son_giris_ip %><% } %>
+          </div>
+        </div>
+      </div>
+
+      <div class="kart" data-renk="#ffb627">
+        <span class="kart-im" aria-hidden="true">⚿</span>
+        <div class="kart-govde">
+          <div class="kart-ad">SIFRE YASI</div>
+          <div class="kart-alt">
+            <% if (hesap && hesap.sifre_degisti_at) { %>
+              <%
+                const gun = Math.floor((Date.now() - new Date(hesap.sifre_degisti_at).getTime()) / 86400000);
+              %>
+              <%= gun %> gun once degistirildi
+            <% } else { %>bilinmiyor<% } %>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel-baslik bosluk-ust"><span>ARAYUZ</span></div>
+    <form method="post" action="/ayarlar/arayuz">
+      <%- csrfAlani() %>
+      <%
+        function ayarDegeri(ad) {
+          const s = (ayarlar || []).find(function (a) { return a.anahtar === ad; });
+          return s ? s.deger === 'true' : true;
+        }
+      %>
+      <div class="kart-liste">
+        <label class="secim">
+          <input type="checkbox" name="ses_aktif" value="true" <%= ayarDegeri('ses_aktif') ? 'checked' : '' %>>
+          <span>Ses efektleri (Web Audio)</span>
+        </label>
+        <label class="secim">
+          <input type="checkbox" name="matrix_aktif" value="true" <%= ayarDegeri('matrix_aktif') ? 'checked' : '' %>>
+          <span>Matrix yagmuru arka plani</span>
+        </label>
+        <label class="secim">
+          <input type="checkbox" name="gecis_animasyonu" value="true" <%= ayarDegeri('gecis_animasyonu') ? 'checked' : '' %>>
+          <span>Sayfa gecis animasyonlari</span>
+        </label>
+      </div>
+      <div class="dugme-sirasi bosluk-ust">
+        <button type="submit" class="dugme dugme--kucuk"><span class="dugme-metin">KAYDET</span></button>
+      </div>
+    </form>
+  </div>
+
+</section>
+
+<!-- ========================== API ANAHTARLARI ========================== -->
+<section class="panel">
+  <div class="panel-baslik">
+    <span>API ANAHTAR KASASI</span>
+    <span class="sag">AES-256-GCM ILE SIFRELI</span>
+  </div>
+
+  <div class="uyari-kutu uyari-kutu--bilgi">
+    <span class="uyari-im" aria-hidden="true">i</span>
+    <span>Anahtarlar veritabaninda sifreli saklanir ve bir daha hicbir ekranda duz metin olarak gosterilmez.</span>
+  </div>
+
+  <% if (anahtarlar.length === 0) { %>
+    <div class="bos bosluk-ust"><span class="bos-im" aria-hidden="true">⚿</span> Kayitli anahtar yok.</div>
+  <% } else { %>
+    <div class="tablo-sarmal bosluk-ust">
+      <table class="veri">
+        <thead>
+          <tr><th>SAGLAYICI</th><th>ETIKET</th><th>MASKE</th><th>DURUM</th><th>SON KULLANIM</th><th></th></tr>
+        </thead>
+        <tbody>
+          <% anahtarlar.forEach(function (a) { %>
+            <tr>
+              <td class="zumrut"><%= a.saglayici %></td>
+              <td class="sonuk"><%= a.etiket %></td>
+              <td class="mono-sayi sonuk"><%= a.maske || '••••' %></td>
+              <td><span class="etiket <%= a.aktif ? '' : 'etiket--sonuk' %>"><%= a.aktif ? 'AKTIF' : 'KAPALI' %></span></td>
+              <td class="zaman"><%= a.son_kullanim_at ? new Date(a.son_kullanim_at).toLocaleString('tr-TR') : '—' %></td>
+              <td class="sag-hizala dugme-sirasi">
+                <form method="post" action="/ayarlar/api-anahtari/<%= a.id %>/aktif" data-ajax-anahtar-durum>
+                  <%- csrfAlani() %>
+                  <input type="hidden" name="aktif" value="<%= a.aktif ? 'false' : 'true' %>">
+                  <button type="submit" class="dugme dugme--sonuk dugme--kucuk">
+                    <span class="dugme-metin"><%= a.aktif ? 'DEVRE DISI BIRAK' : 'AKTIF ET' %></span>
+                  </button>
+                </form>
+                <form method="post" action="/ayarlar/api-anahtari/<%= a.id %>/sil"
+                      data-onay="<%= a.saglayici %>/<%= a.etiket %> anahtarini silmek istediginize emin misiniz?">
+                  <%- csrfAlani() %>
+                  <button type="submit" class="dugme dugme--tehlike dugme--kucuk">
+                    <span class="dugme-metin">SIL</span>
+                  </button>
+                </form>
+              </td>
+            </tr>
+          <% }); %>
+        </tbody>
+      </table>
+    </div>
+  <% } %>
+
+  <div class="panel-baslik bosluk-ust"><span>YENI ANAHTAR EKLE</span></div>
+  <form method="post" action="/ayarlar/api-anahtari" autocomplete="off">
+    <%- csrfAlani() %>
+    <div class="izgara izgara--3">
+      <div class="alan">
+        <label class="alan-etiket" for="saglayici">SAGLAYICI</label>
+        <select id="saglayici" name="saglayici" required>
+          <optgroup label="Sohbet / LLM">
+            <option value="anthropic">anthropic (Claude)</option>
+            <option value="openai">openai</option>
+            <option value="google">google (Gemini)</option>
+            <option value="groq">groq</option>
+            <option value="openrouter">openrouter</option>
+          </optgroup>
+          <optgroup label="Web Arama">
+            <option value="tavily">tavily</option>
+            <option value="serper">serper</option>
+          </optgroup>
+          <optgroup label="Ses (TTS / klonlama)">
+            <option value="elevenlabs">elevenlabs</option>
+          </optgroup>
+          <option value="diger">diger</option>
+        </select>
+      </div>
+      <div class="alan">
+        <label class="alan-etiket" for="etiket">ETIKET</label>
+        <div class="girdi-sarmal">
+          <input type="text" id="etiket" name="etiket" value="varsayilan" maxlength="60">
+        </div>
+      </div>
+      <div class="alan">
+        <label class="alan-etiket" for="deger">ANAHTAR</label>
+        <div class="girdi-sarmal">
+          <input type="password" id="deger" name="deger" placeholder="sk-..." maxlength="500"
+                 autocomplete="off" required>
+        </div>
+      </div>
+    </div>
+    <div class="dugme-sirasi">
+      <button type="submit" class="dugme"><span class="dugme-metin">SIFRELE VE KAYDET</span></button>
+    </div>
+  </form>
+</section>
+
+<!-- ============================= CAMBAZ SESI ============================= -->
+<%
+  const sesA = locals.sesOrnegi || null;
+  const sesAyar = locals.sesAyarlari || { tur: 'tarayici', ad: '', hiz: '1', perde: '1' };
+%>
+<section class="panel bosluk-ust">
+  <div class="panel-baslik">
+    <span>CAMBAZ SESI</span>
+    <span class="sag">SISTEM / OZEL KLONLAMA</span>
+  </div>
+
+  <div class="uyari-kutu uyari-kutu--bilgi">
+    <span class="uyari-im" aria-hidden="true">i</span>
+    <span>
+      Motor onceligi: <strong>elevenlabs</strong> (ozel ses ornegi klonlandiysa) &gt;
+      <strong>openai</strong> (hazir seslerden biri) &gt; <strong>tarayici</strong> (ucretsiz, anahtarsiz,
+      sistem seslerinden secilir). Hangi saglayicilarin aktif oldugu yukaridaki API anahtarlarina gore
+      otomatik belirlenir.
+    </span>
+  </div>
+
+  <form id="ses-ayar-form" method="post" action="/ayarlar/cambaz-ses" class="bosluk-ust">
+    <%- csrfAlani() %>
+    <div class="izgara izgara--3">
+      <div class="alan">
+        <label class="alan-etiket" for="ses-tur">SES MOTORU</label>
+        <select id="ses-tur" name="tur">
+          <option value="tarayici" <%= sesAyar.tur === 'tarayici' ? 'selected' : '' %>>tarayici (ucretsiz)</option>
+          <option value="openai" <%= sesAyar.tur === 'openai' ? 'selected' : '' %>>openai TTS</option>
+          <option value="elevenlabs" <%= sesAyar.tur === 'elevenlabs' ? 'selected' : '' %>>elevenlabs (ozel klon)</option>
+        </select>
+      </div>
+      <div class="alan">
+        <label class="alan-etiket" for="ses-ad">SES ADI</label>
+        <div class="girdi-sarmal">
+          <input type="text" id="ses-ad" name="ad" maxlength="80" value="<%= sesAyar.ad %>"
+                 placeholder="tarayici: sistem sesi adi / openai: onyx, nova, alloy...">
+        </div>
+        <div class="ipucu" id="ses-ad-liste-ipucu"></div>
+      </div>
+      <div class="alan">
+        <label class="alan-etiket" for="ses-hiz">HIZ / PERDE</label>
+        <div class="izgara izgara--2">
+          <input type="range" id="ses-hiz" name="hiz" min="0.5" max="2" step="0.05" value="<%= sesAyar.hiz %>">
+          <input type="range" id="ses-perde" name="perde" min="0.5" max="2" step="0.05" value="<%= sesAyar.perde %>">
+        </div>
+        <div class="kucuk sonuk">hiz: <span id="ses-hiz-deger"><%= sesAyar.hiz %></span>x ·
+          perde: <span id="ses-perde-deger"><%= sesAyar.perde %></span>x (perde yalnizca tarayici motorunda etkili)</div>
+      </div>
+    </div>
+    <div class="dugme-sirasi bosluk-ust">
+      <button type="button" id="ses-dinle-dugme" class="dugme dugme--sonuk dugme--kucuk">
+        <span class="dugme-metin">▶ ORNEK SESLENDIR</span>
+      </button>
+      <button type="submit" class="dugme dugme--kucuk"><span class="dugme-metin">KAYDET</span></button>
+    </div>
+  </form>
+
+  <div class="panel-baslik bosluk-ust"><span>OZEL SES ORNEGI (KLONLAMA ICIN)</span></div>
+  <% if (sesA) { %>
+    <div class="kart-liste">
+      <div class="kart" data-renk="#a78bfa">
+        <span class="kart-im" aria-hidden="true">♪</span>
+        <div class="kart-govde">
+          <div class="kart-ad"><%= sesA.dosya_adi || 'ses-ornegi' %></div>
+          <div class="kart-alt">
+            <%= Math.round((sesA.bayt_boyutu || 0) / 1024) %> KB ·
+            <%= sesA.elevenlabs_ses_id ? 'ElevenLabs ile klonlandi' : 'Henuz klonlanmadi (elevenlabs anahtari gerekir)' %>
+          </div>
+        </div>
+        <div class="kart-sag">
+          <form method="post" action="/ayarlar/cambaz-ses-ornegi/sil" data-onay="Ozel ses ornegini silmek istediginize emin misiniz?">
+            <%- csrfAlani() %>
+            <button type="submit" class="dugme dugme--tehlike dugme--kucuk"><span class="dugme-metin">SIL</span></button>
+          </form>
+        </div>
+      </div>
+    </div>
+  <% } else { %>
+    <div class="bos bosluk-ust"><span class="bos-im" aria-hidden="true">♪</span> Yuklenmis ozel ses ornegi yok.</div>
+  <% } %>
+
+  <form method="post" action="/ayarlar/cambaz-ses-ornegi" enctype="multipart/form-data" class="bosluk-ust" id="ses-ornek-form">
+    <%- csrfAlani() %>
+    <label class="surukle-birak" for="ses-ornek-girdi">
+      <span class="surukle-im" aria-hidden="true">⇧</span>
+      <span>Referans ses dosyasi secin (mp3, wav, webm, ogg, m4a)</span>
+      <span class="kucuk sonuk" id="ses-ornek-ad">dosya secilmedi</span>
+      <input type="file" id="ses-ornek-girdi" name="ornek" accept="audio/*" class="sr-only">
+    </label>
+    <button type="submit" class="dugme dugme--tam bosluk-ust" id="ses-ornek-yukle-dugme" disabled>
+      <span class="dugme-metin">YUKLE VE KLONLA</span>
+    </button>
+  </form>
+</section>
+
+<% const betikler = ['/js/ayarlar.js']; %>
+<%- include('partials/kabuk-alt') %>
+<%- include('partials/son', { betikler: betikler }) %>
