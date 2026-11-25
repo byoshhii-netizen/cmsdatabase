@@ -105,6 +105,24 @@ uygulama.use(oturumYukle);
 let arayuzOnbellek = { veri: null, zaman: 0 };
 const ONBELLEK_MS = 30_000;
 
+// Gezintideki uyari sayaci her istekte sorgulanmasin: kisa sureli onbellek.
+let uyariOnbellek = { sayi: 0, zaman: 0 };
+const UYARI_ONBELLEK_MS = 15_000;
+
+async function uyariSayisi() {
+  const simdi = Date.now();
+  if (simdi - uyariOnbellek.zaman < UYARI_ONBELLEK_MS) return uyariOnbellek.sayi;
+  try {
+    const db = require('./config/db');
+    const satir = await db.tekSatir('SELECT COUNT(*)::int AS n FROM uyarilar WHERE okundu = FALSE');
+    uyariOnbellek = { sayi: satir ? satir.n : 0, zaman: simdi };
+  } catch {
+    // Arsiv semasi henuz uygulanmadiysa sayac sifir kalir, sayfa calismaya devam eder.
+    uyariOnbellek = { sayi: 0, zaman: simdi };
+  }
+  return uyariOnbellek.sayi;
+}
+
 uygulama.use(async (req, res, next) => {
   try {
     const simdi = Date.now();
@@ -119,8 +137,22 @@ uygulama.use(async (req, res, next) => {
     res.locals.rota = req.path;
     res.locals.csrfAlani = () => csrfAlani(res.locals.csrfToken);
     res.locals.baslik = 'CMS VERI MERKEZI';
-    res.locals.bildirim = null;
-    res.locals.hata = null;
+
+    // Yonlendirme sonrasi bildirimler: POST -> 303 -> GET akisinda mesaj
+    // tasimanin en yalin yolu sorgu dizesidir. Uzunluk sinirlanir ve
+    // EJS zaten kacirdigi icin enjeksiyon riski yoktur.
+    const bildirimHam = typeof req.query.bildirim === 'string' ? req.query.bildirim : '';
+    const hataHam = typeof req.query.hata === 'string' ? req.query.hata : '';
+    res.locals.bildirim = bildirimHam ? bildirimHam.slice(0, 400) : null;
+    res.locals.hata = hataHam ? hataHam.slice(0, 400) : null;
+
+    // Arayuz temasi ve okunmamis uyari sayaci (gezinti rozeti icin)
+    res.locals.tema = ['zumrut', 'kehribar', 'camgobegi', 'mor']
+      .includes(sistem.arayuz_temasi) ? sistem.arayuz_temasi : 'zumrut';
+    res.locals.tasnifBandi = sistem.arsiv_tasnif_bandi !== false && sistem.arsiv_tasnif_bandi !== 'false';
+    res.locals.varsayilanTasnif = typeof sistem.arsiv_varsayilan_tasnif === 'string'
+      ? sistem.arsiv_varsayilan_tasnif : 'hizmete_ozel';
+    res.locals.uyariSayisi = req.session && req.session.yonetici ? await uyariSayisi() : 0;
 
     // Bakim modu: giris, saglik ve statik dosyalar haric her sey kapali.
     if (sistem.bakim_modu && !/^\/(giris|cikis|saglik|api\/kimlik)/.test(req.path)) {

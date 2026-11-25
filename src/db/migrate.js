@@ -14,6 +14,18 @@ const db = require('../config/db');
 const { sifreHashle } = require('../utils/crypto');
 
 const TABLOLAR = [
+  // --- Arsiv / zeka katmani (bagimli olanlar once) ---
+  'zeka_terimleri', 'zeka_belgeleri', 'zeka_modelleri', 'zeka_sorgulari',
+  'uyarilar', 'izleme_kurallari',
+  'denetim_izi', 'arsiv_sorgulari',
+  'belge_cozumleme',
+  'vaka_ogeleri', 'varlik_ekleri',
+  'olay_varliklari', 'olaylar',
+  'kayit_varliklari', 'kayit_surumleri', 'kayitlar',
+  'varlik_iliskileri', 'varliklar',
+  'vakalar', 'kaynaklar',
+  // --- Cekirdek katman ---
+  'cambaz_ses_profili', 'cambaz_hafiza',
   'cambaz_mesajlari', 'cambaz_oturumlari',
   'paylasim_erisimleri', 'paylasim_linkleri',
   'pano_ogeleri', 'panolar',
@@ -23,21 +35,38 @@ const TABLOLAR = [
   'oturumlar', 'ayarlar', 'yoneticiler',
 ];
 
+const DIZILER = [
+  'seq_varlik_kodu', 'seq_kayit_kodu', 'seq_vaka_kodu', 'seq_kaynak_kodu', 'seq_olay_kodu',
+];
+
 async function sifirla() {
   console.log('[MIGRASYON] --sifirla verildi: mevcut tablolar dusuruluyor...');
   for (const t of TABLOLAR) {
     await db.sorgu(`DROP TABLE IF EXISTS ${t} CASCADE`);
     console.log(`  - ${t} dusuruldu`);
   }
+  for (const d of DIZILER) {
+    await db.sorgu(`DROP SEQUENCE IF EXISTS ${d} CASCADE`);
+  }
   await db.sorgu('DROP FUNCTION IF EXISTS trg_guncellendi() CASCADE');
+  await db.sorgu('DROP FUNCTION IF EXISTS trg_arama_vektoru() CASCADE');
+  await db.sorgu('DROP FUNCTION IF EXISTS arsiv_normalize(TEXT) CASCADE');
 }
 
+const SEMA_DOSYALARI = ['schema.sql', 'schema_arsiv.sql'];
+
 async function semaUygula() {
-  const yol = path.join(__dirname, 'schema.sql');
-  const sql = fs.readFileSync(yol, 'utf8');
-  console.log('[MIGRASYON] schema.sql uygulaniyor...');
-  await db.sorgu(sql);
-  console.log('[MIGRASYON] Sema hazir.');
+  for (const dosya of SEMA_DOSYALARI) {
+    const yol = path.join(__dirname, dosya);
+    if (!fs.existsSync(yol)) {
+      console.warn(`[MIGRASYON] ${dosya} bulunamadi, atlandi.`);
+      continue;
+    }
+    const sql = fs.readFileSync(yol, 'utf8');
+    console.log(`[MIGRASYON] ${dosya} uygulaniyor...`);
+    await db.sorgu(sql);
+  }
+  console.log('[MIGRASYON] Sema hazir (cekirdek + arsiv).');
 }
 
 async function varsayilanYonetici() {
