@@ -68,7 +68,11 @@
     if (!dahiliBaglanti(bag)) return;
 
     olay.preventDefault();
-    if (kuresel.Ses) kuresel.Ses.gecis();
+    // Ses efekti istege baglidir: eksik ya da hatali bir ses metodu asla
+    // yonlendirmeyi engellememelidir (aksi halde tum baglantilar olur).
+    try {
+      if (kuresel.Ses && typeof kuresel.Ses.gecis === 'function') kuresel.Ses.gecis();
+    } catch (_) { /* ses hatasi yoksayilir */ }
 
     const etiket = bag.dataset.gecisYazi || 'BAGLANTI KURULUYOR';
     gosterr(etiket);

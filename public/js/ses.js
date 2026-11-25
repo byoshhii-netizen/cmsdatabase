@@ -130,6 +130,9 @@
     /** Baglanti/kart gezinmesi: yukari dogru kucuk bir kaydirma. */
     gezin: function () { ton(660, 0.05, 'triangle', 0.3, 0, 880); },
 
+    /** Sayfa gecisi: kisa, yukari dogru baglanti kurma tonu. */
+    gecis: function () { ton(880, 0.12, 'sine', 0.3, 0, 1320); },
+
     /** Enter / onay: iki notali kisa arpej. */
     onay: function () {
       ton(784, 0.06, 'sine', 0.4);
