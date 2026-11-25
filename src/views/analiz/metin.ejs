@@ -1,0 +1,197 @@
+<%- include('../partials/bas') %>
+<%- include('../partials/kabuk-ust') %>
+
+<% const sz = sozluk; const c = locals.cozum; %>
+
+<section class="hud">
+  <div class="hud-serit">
+    <div class="hud-serit-sol">
+      <span class="hud-serit-im" aria-hidden="true">✎</span>
+      <div>
+        <p class="hud-ustbaslik">YAPISTIR VE COZUMLE · HICBIR VERI DISARIYA GITMEZ</p>
+        <h1 class="hud-baslik">METIN COZUMLEYICI</h1>
+      </div>
+    </div>
+  </div>
+
+  <p class="hud-altbaslik">
+    Elindeki ham metni yapıştır: motor özetini çıkarır, anahtar kavramlarını bulur,
+    içindeki kişi/kurum/konum/telefon/IBAN/TCKN/plaka/tarih gibi varlıkları
+    <strong>doğrulamalı</strong> olarak ayıklar ve tematik ağırlığını hesaplar.
+    İstersen sonucu tek tuşla arşiv kaydına çevirir.
+  </p>
+
+  <form method="post" action="/analiz/metin" class="hud-form bosluk-ust">
+    <%- csrfAlani() %>
+    <div class="hud-alan">
+      <label for="m-metin">METIN</label>
+      <textarea id="m-metin" name="metin" rows="12" required
+                placeholder="Rapor, tutanak, e-posta, mesaj dökümü… olduğu gibi yapıştır."><%= locals.girdi || '' %></textarea>
+    </div>
+    <div class="hud-alan">
+      <label for="m-sorgu">ODAK SORUSU (istege bagli)</label>
+      <input type="text" id="m-sorgu" name="sorgu" value="<%= locals.sorgu || '' %>"
+             placeholder="Örn. para transferi — özet bu soruya odaklanır">
+    </div>
+    <div class="hud-dugmeler">
+      <button type="submit" class="dugme"><span class="dugme-metin">COZUMLE</span></button>
+    </div>
+  </form>
+</section>
+
+<% if (c && c.tamam) { %>
+  <div class="hud-izgara bosluk-ust">
+    <div class="hud-veri">
+      <span class="hud-veri-etiket">KELIME</span>
+      <span class="hud-veri-deger sayi"><%= c.okuma ? sz.bicimliSayi(c.okuma.kelimeSayisi) : 0 %></span>
+      <span class="hud-veri-alt"><%= c.okuma ? c.okuma.cumleSayisi : 0 %> cümle</span>
+    </div>
+    <div class="hud-veri">
+      <span class="hud-veri-etiket">OKUNABILIRLIK</span>
+      <span class="hud-veri-deger sayi"><%= c.okuma ? c.okuma.puan : '—' %></span>
+      <span class="hud-veri-alt"><%= c.okuma ? c.okuma.seviye : '' %> (Ateşman)</span>
+    </div>
+    <div class="hud-veri">
+      <span class="hud-veri-etiket">VARLIK</span>
+      <span class="hud-veri-deger sayi"><%= c.varlikOzeti.toplam %></span>
+      <span class="hud-veri-alt"><%= c.varlikOzeti.hassas %> hassas tanımlayıcı</span>
+    </div>
+    <div class="hud-veri">
+      <span class="hud-veri-etiket">DIL</span>
+      <span class="hud-veri-deger hud-veri-deger--kucuk"><%= (c.dil || '—').toLocaleUpperCase('tr-TR') %></span>
+      <span class="hud-veri-alt">otomatik tahmin</span>
+    </div>
+  </div>
+
+  <div class="hud-yan-yana bosluk-ust">
+    <div>
+      <section class="hud">
+        <div class="hud-serit">
+          <div class="hud-serit-sol">
+            <span class="hud-serit-im" aria-hidden="true">▤</span>
+            <h2 class="hud-baslik hud-baslik--kucuk">CIKARIMSAL OZET</h2>
+          </div>
+        </div>
+        <div class="motor-cevap"><p><%= c.ozet %></p></div>
+
+        <% if (c.ozetCumleleri && c.ozetCumleleri.length) { %>
+          <h3 class="hud-ustbaslik bosluk-ust">SECILEN CUMLELER VE PUANLARI</h3>
+          <ul class="baglanti-listesi">
+            <% c.ozetCumleleri.forEach(function (s) { %>
+              <li class="baglanti-oge">
+                <span class="baglanti-ad kucuk"><%= s.metin %></span>
+                <span class="kucuk zumrut sayi"><%= s.puan %></span>
+              </li>
+            <% }); %>
+          </ul>
+        <% } %>
+
+        <% if (c.anahtar && c.anahtar.length) { %>
+          <h3 class="hud-ustbaslik bosluk-ust">ANAHTAR KAVRAMLAR (TextRank)</h3>
+          <div class="etiketler">
+            <% c.anahtar.forEach(function (a) { %>
+              <span class="etiket"><%= a.obek %></span>
+            <% }); %>
+          </div>
+        <% } %>
+      </section>
+
+      <% const turler = Object.keys(c.varliklar || {}); %>
+      <% if (turler.length) { %>
+        <section class="hud bosluk-ust">
+          <div class="hud-serit">
+            <div class="hud-serit-sol">
+              <span class="hud-serit-im" aria-hidden="true">◆</span>
+              <h2 class="hud-baslik hud-baslik--kucuk">CIKARILAN VARLIKLAR</h2>
+            </div>
+          </div>
+          <div class="hud-tablo-sarmal">
+            <table class="hud-tablo">
+              <thead><tr><th class="daralt">TUR</th><th>DEGER</th><th class="sayi daralt">GUVEN</th><th class="sayi daralt">GECIS</th><th>BAGLAM</th></tr></thead>
+              <tbody>
+                <% turler.forEach(function (t) { %>
+                  <% c.varliklar[t].slice(0, 10).forEach(function (b, i) { %>
+                    <tr>
+                      <td class="daralt"><% if (i === 0) { %><span class="cip cip--sonuk"><%= sz.VARLIK_TUR_ADI[t] || t %></span><% } %></td>
+                      <td><strong><%= b.deger %></strong>
+                        <% if (b.ek && b.ek.banka) { %><span class="satir-alt"><%= b.ek.banka %></span><% } %>
+                        <% if (b.ek && b.ek.algoritma) { %><span class="satir-alt"><%= b.ek.algoritma %></span><% } %>
+                        <% if (b.ek && b.ek.ag) { %><span class="satir-alt"><%= b.ek.ag %></span><% } %>
+                      </td>
+                      <td class="sayi daralt">%<%= Math.round(b.guven * 100) %></td>
+                      <td class="sayi daralt"><%= b.sayi %></td>
+                      <td class="kucuk sonuk"><%= (b.baglamlar && b.baglamlar[0] ? b.baglamlar[0] : '').slice(0, 110) %></td>
+                    </tr>
+                  <% }); %>
+                <% }); %>
+              </tbody>
+            </table>
+          </div>
+        </section>
+      <% } %>
+    </div>
+
+    <div>
+      <% if (c.temalar && c.temalar.length) { %>
+        <section class="hud">
+          <div class="hud-serit">
+            <div class="hud-serit-sol">
+              <span class="hud-serit-im" aria-hidden="true">◬</span>
+              <h2 class="hud-baslik hud-baslik--kucuk">TEMATIK AGIRLIK</h2>
+            </div>
+          </div>
+          <% c.temalar.forEach(function (t) { %>
+            <div class="hud-olcer">
+              <div class="hud-olcer-ust">
+                <span><%= t.tema %></span>
+                <span class="hud-olcer-deger"><%= t.puan %></span>
+              </div>
+              <div class="hud-olcer-ray"><span class="hud-olcer-dolu" data-oran="<%= Math.min(100, t.puan * 10) %>"></span></div>
+              <p class="hud-altbaslik"><%= t.gecenler.join(', ') %></p>
+            </div>
+          <% }); %>
+        </section>
+      <% } %>
+
+      <section class="hud <%= c.temalar && c.temalar.length ? 'bosluk-ust' : '' %>">
+        <div class="hud-serit">
+          <div class="hud-serit-sol">
+            <span class="hud-serit-im" aria-hidden="true">＋</span>
+            <h2 class="hud-baslik hud-baslik--kucuk">ARSIVE AKTAR</h2>
+          </div>
+        </div>
+        <form method="post" action="/analiz/metin/kaydet" class="hud-form">
+          <%- csrfAlani() %>
+          <input type="hidden" name="metin" value="<%= locals.girdi || '' %>">
+          <div class="hud-alan">
+            <label for="a-baslik">KAYIT BASLIGI</label>
+            <input type="text" id="a-baslik" name="baslik" maxlength="300"
+                   value="<%= (c.ozet || '').slice(0, 110) %>">
+          </div>
+          <div class="hud-alan">
+            <label for="a-tur">TUR</label>
+            <select id="a-tur" name="tur">
+              <% ['rapor','analiz','ihbar','gozlem','acik_kaynak','tutanak','gorusme','teknik'].forEach(function (t) { %>
+                <option value="<%= t %>"><%= sz.KAYIT_TUR_ADI[t] || t %></option>
+              <% }); %>
+            </select>
+          </div>
+          <div class="hud-alan">
+            <label for="a-tasnif">TASNIF</label>
+            <select id="a-tasnif" name="tasnif">
+              <% ['acik','hizmete_ozel','gizli','cok_gizli'].forEach(function (t) { %>
+                <option value="<%= t %>" <%= t === (locals.varsayilanTasnif || 'hizmete_ozel') ? 'selected' : '' %>><%= sz.TASNIF_ADI[t] %></option>
+              <% }); %>
+            </select>
+          </div>
+          <div class="hud-dugmeler">
+            <button type="submit" class="dugme dugme--kucuk"><span class="dugme-metin">KAYIT OLUSTUR</span></button>
+          </div>
+        </form>
+      </section>
+    </div>
+  </div>
+<% } %>
+
+<%- include('../partials/kabuk-alt') %>
+<%- include('../partials/son', { betikler: [] }) %>

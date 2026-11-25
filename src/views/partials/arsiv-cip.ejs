@@ -1,0 +1,43 @@
+<%
+  /*
+   * Ortak derece/tasnif cip seridi.
+   * Beklenen degiskenler (hepsi istege bagli):
+   *   oge      : tasnif / guvenilirlik / dogruluk / durum alanlari olan nesne
+   *   kod      : gosterilecek kod (VRL-00012 gibi)
+   *   turAdi   : tur etiketi
+   */
+  const o = locals.oge || {};
+  const sz = locals.sozluk || locals.sz;
+%>
+<% if (locals.kod) { %><span class="kod"><%= locals.kod %></span><% } %>
+<% if (locals.turAdi) { %><span class="cip cip--sonuk"><%= locals.turAdi %></span><% } %>
+
+<% if (o.tasnif) { %>
+  <span class="cip cip-tasnif cip-tasnif--<%= o.tasnif %>" title="Tasnif seviyesi">
+    <%= sz.TASNIF_ADI[o.tasnif] || o.tasnif %>
+  </span>
+<% } %>
+
+<% if (o.guvenilirlik || o.dogruluk) { %>
+  <span class="derece-cifti" title="Admiralty derecelendirmesi: kaynak güvenilirliği + bilgi doğruluğu">
+    <% if (o.guvenilirlik) { %>
+      <span class="derece derece--<%= String(o.guvenilirlik).toLowerCase() %>"
+            title="Kaynak: <%= sz.GUVENILIRLIK_ADI[o.guvenilirlik] || '—' %>"><%= o.guvenilirlik %></span>
+    <% } %>
+    <% if (o.dogruluk) { %>
+      <span class="derece derece--<%= ['a','a','b','c','d','e','f'][Number(o.dogruluk)] || 'c' %>"
+            title="Doğruluk: <%= sz.DOGRULUK_ADI[o.dogruluk] || '—' %>"><%= o.dogruluk %></span>
+    <% } %>
+  </span>
+<% } %>
+
+<% if (o.durum) { %>
+  <span class="cip cip--sonuk" title="Durum">
+    <span class="durum-nokta durum-nokta--<%= o.durum %>" aria-hidden="true"></span>
+    <%= sz.DURUM_ADI[o.durum] || o.durum %>
+  </span>
+<% } %>
+
+<% if (o.oncelik) { %>
+  <span class="oncelik oncelik--<%= o.oncelik %>"><%= o.oncelik %></span>
+<% } %>

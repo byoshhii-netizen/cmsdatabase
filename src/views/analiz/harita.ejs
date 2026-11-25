@@ -1,0 +1,110 @@
+<%- include('../partials/bas') %>
+<%- include('../partials/kabuk-ust') %>
+
+<% const sz = sozluk; %>
+
+<section class="hud">
+  <div class="hud-serit">
+    <div class="hud-serit-sol">
+      <span class="hud-serit-im" aria-hidden="true">⊕</span>
+      <div>
+        <p class="hud-ustbaslik"><%= veri.noktalar.length %> KONUMLU OGE · <%= veri.yogunluk.length %> YOGUNLUK KUMESI</p>
+        <h1 class="hud-baslik">KONUM HARITASI</h1>
+      </div>
+    </div>
+  </div>
+
+  <p class="hud-altbaslik">
+    Koordinatı olan varlıklar, olaylar, kayıtlar ve <strong>EXIF GPS etiketi taşıyan
+    fotoğraflar</strong> aynı düzlemde gösterilir. Harita dışarıdan karo (tile) çekmez;
+    kıta hatları ve ızgara tarayıcıda çizilir — kapalı devre çalışır, dışarıya istek gitmez.
+  </p>
+
+  <div class="harita-sarmal bosluk-ust">
+    <canvas class="harita-tuval" id="harita-tuval"
+            data-noktalar="<%= JSON.stringify(veri.noktalar.map(function (n) { return { id: n.id, baslik: n.baslik, tur: n.tur, kaynak: n.kaynak, enlem: Number(n.enlem), boylam: Number(n.boylam), onem: n.onem || 50 }; })) %>"
+            aria-label="Konumlu arsiv ogelerinin haritasi"></canvas>
+    <div class="graf-aciklama">
+      <span><i class="graf-renk-kisi" aria-hidden="true"></i> varlık</span>
+      <span><i class="graf-renk-kurum" aria-hidden="true"></i> olay</span>
+      <span><i class="graf-renk-konum" aria-hidden="true"></i> kayıt</span>
+      <span><i class="graf-renk-diger" aria-hidden="true"></i> fotoğraf GPS</span>
+    </div>
+    <div class="graf-arac-cubugu">
+      <button type="button" class="graf-arac" id="harita-yakinlas" title="Yakınlaştır">＋</button>
+      <button type="button" class="graf-arac" id="harita-uzaklas" title="Uzaklaştır">−</button>
+      <button type="button" class="graf-arac" id="harita-sifirla" title="Türkiye'ye dön">⟲</button>
+      <button type="button" class="graf-arac" id="harita-dunya" title="Dünya görünümü">◯</button>
+    </div>
+    <div class="graf-bilgi" id="harita-bilgi" hidden></div>
+  </div>
+</section>
+
+<div class="hud-yan-yana bosluk-ust">
+  <div>
+    <section class="hud">
+      <div class="hud-serit">
+        <div class="hud-serit-sol">
+          <span class="hud-serit-im" aria-hidden="true">≡</span>
+          <h2 class="hud-baslik hud-baslik--kucuk">KONUMLU OGELER</h2>
+        </div>
+      </div>
+      <% if (veri.noktalar.length) { %>
+        <div class="hud-tablo-sarmal">
+          <table class="hud-tablo">
+            <thead><tr><th class="daralt">KAYNAK</th><th>BASLIK</th><th class="daralt">KOORDINAT</th><th class="sayi daralt">ONEM</th></tr></thead>
+            <tbody>
+              <% veri.noktalar.slice(0, 120).forEach(function (n) { %>
+                <tr>
+                  <td class="daralt"><span class="cip cip--sonuk"><%= n.kaynak %></span></td>
+                  <td>
+                    <% if (n.kaynak === 'varlik') { %><a href="/arsiv/varlik/<%= n.id %>"><%= n.baslik %></a>
+                    <% } else if (n.kaynak === 'olay') { %><a href="/arsiv/olay/<%= n.id %>"><%= n.baslik %></a>
+                    <% } else if (n.kaynak === 'kayit') { %><a href="/arsiv/kayit/<%= n.id %>"><%= n.baslik %></a>
+                    <% } else { %><a href="/depo/dosya/<%= n.id %>/cozumleme"><%= n.baslik %></a><% } %>
+                  </td>
+                  <td class="daralt kucuk sonuk sayi"><%= Number(n.enlem).toFixed(4) %>, <%= Number(n.boylam).toFixed(4) %></td>
+                  <td class="sayi daralt"><%= n.onem || '—' %></td>
+                </tr>
+              <% }); %>
+            </tbody>
+          </table>
+        </div>
+      <% } else { %>
+        <div class="bos-durum">
+          <span class="bos-durum-im" aria-hidden="true">⊕</span>
+          <p>Koordinatlı öğe yok. Varlık/olay/kayıt formlarına enlem-boylam girebilir ya da
+             GPS etiketli bir fotoğraf yükleyip çözümletebilirsin — çözümleme EXIF'ten
+             konumu otomatik okur.</p>
+        </div>
+      <% } %>
+    </section>
+  </div>
+
+  <div>
+    <% if (veri.yogunluk.length) { %>
+      <section class="hud">
+        <div class="hud-serit">
+          <div class="hud-serit-sol">
+            <span class="hud-serit-im" aria-hidden="true">◉</span>
+            <h2 class="hud-baslik hud-baslik--kucuk">YOGUNLUK KUMELERI</h2>
+          </div>
+        </div>
+        <p class="hud-altbaslik">Yarım derecelik ızgarada toplanan öğe sayısı.</p>
+        <ul class="baglanti-listesi bosluk-ust">
+          <% veri.yogunluk.slice(0, 20).forEach(function (y) { %>
+            <li class="baglanti-oge">
+              <span class="baglanti-ad kucuk sayi"><%= y.enlem.toFixed(2) %>, <%= y.boylam.toFixed(2) %></span>
+              <span class="baglanti-guc"><i data-genislik="<%= Math.min(100, y.sayi * 10) %>"></i></span>
+              <span class="kucuk zumrut sayi"><%= y.sayi %></span>
+            </li>
+          <% }); %>
+        </ul>
+      </section>
+    <% } %>
+  </div>
+</div>
+
+<%- include('../partials/kabuk-alt') %>
+<% const betikler = ['/js/harita.js']; %>
+<%- include('../partials/son', { betikler: betikler }) %>

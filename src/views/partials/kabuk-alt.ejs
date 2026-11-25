@@ -3,19 +3,29 @@
 
   <nav class="alt-menu" aria-label="Mobil gezinti">
     <% const altMenu = [
-         { yol: '/merkez',  im: '▣', ad: 'Merkez' },
-         { yol: '/depo',    im: '▤', ad: 'Depo' },
-         { yol: '/pano',    im: '◈', ad: 'Pano' },
-         { yol: '/cambaz',  im: '◉', ad: 'Cambaz' },
-         { yol: '/loglar',  im: '≡', ad: 'Log' },
-         { yol: '/ayarlar', im: '⚙', ad: 'Ayar' }
+         { yol: '/merkez',          im: '▣', ad: 'Merkez' },
+         { yol: '/arsiv',           im: '◎', ad: 'Arşiv' },
+         { yol: '/analiz',          im: '◬', ad: 'Analiz' },
+         { yol: '/depo',            im: '▤', ad: 'Depo' },
+         { yol: '/cambaz',          im: '◉', ad: 'Cambaz' },
+         { yol: '/arsiv/izleme',    im: '⚑', ad: 'Uyarı', sayac: locals.uyariSayisi || 0 }
        ]; %>
     <% altMenu.forEach(function (o) { %>
       <a class="alt-bag <%= rota === o.yol ? 'etkin' : '' %>" href="<%= o.yol %>">
         <span class="menu-im" aria-hidden="true"><%= o.im %></span>
-        <span><%= o.ad %></span>
+        <span><%= o.ad %><% if (o.sayac) { %> <span class="menu-sayac"><%= o.sayac %></span><% } %></span>
       </a>
     <% }); %>
   </nav>
 
+  <% if (locals.tasnifBandi !== false) { %>
+    <div class="tasnif-bandi tasnif-bandi--alt tasnif-bandi--<%= locals.sayfaTasnifi || locals.varsayilanTasnif || 'hizmete_ozel' %>" role="note">
+      <span class="tasnif-bandi-yan">SAYFA SONU</span>
+      <span><%= ({ acik: 'AÇIK', hizmete_ozel: 'HİZMETE ÖZEL', gizli: 'GİZLİ', cok_gizli: 'ÇOK GİZLİ' })[locals.sayfaTasnifi || locals.varsayilanTasnif || 'hizmete_ozel'] %></span>
+      <span class="tasnif-bandi-yan"><%= sistem.sistem_kodu %></span>
+    </div>
+  <% } %>
+
 </div>
+
+<%- include('komut-paleti') %>

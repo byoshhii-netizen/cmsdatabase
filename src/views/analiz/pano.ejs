@@ -1,0 +1,205 @@
+<%- include('../partials/bas') %>
+<%- include('../partials/kabuk-ust') %>
+
+<% const sz = sozluk; %>
+
+<section class="hud hud--vurgulu">
+  <div class="hud-serit">
+    <div class="hud-serit-sol">
+      <span class="hud-serit-im" aria-hidden="true">◬</span>
+      <div>
+        <p class="hud-ustbaslik">CEKIRDEK ZEKA · API'SIZ YEREL MOTOR</p>
+        <h1 class="hud-baslik">ANALIZ PANOSU</h1>
+      </div>
+    </div>
+    <div class="hud-serit-sag">
+      <a class="cip" href="/analiz/graf">GRAFIK</a>
+      <a class="cip" href="/analiz/zaman">ZAMAN</a>
+      <a class="cip" href="/analiz/harita">HARITA</a>
+      <a class="cip" href="/analiz/kumeler">KUMELER</a>
+      <a class="cip" href="/analiz/metin">METIN</a>
+    </div>
+  </div>
+
+  <% if (motorDurum) { %>
+    <div class="hud-izgara">
+      <div class="hud-veri">
+        <span class="hud-veri-etiket">DIZIN</span>
+        <span class="hud-veri-deger sayi"><%= sz.bicimliSayi(motorDurum.dizin.parca || 0) %></span>
+        <span class="hud-veri-alt">parça · <%= sz.bicimliSayi(motorDurum.dizin.kaynak || 0) %> kaynak</span>
+      </div>
+      <div class="hud-veri">
+        <span class="hud-veri-etiket">TEKIL TERIM</span>
+        <span class="hud-veri-deger sayi"><%= sz.bicimliSayi(motorDurum.dizin.tekil || 0) %></span>
+        <span class="hud-veri-alt">ort. parça <%= motorDurum.dizin.ort_uzunluk || 0 %> terim</span>
+      </div>
+      <div class="hud-veri">
+        <span class="hud-veri-etiket">GRAF</span>
+        <span class="hud-veri-deger sayi"><%= grafVeri ? grafVeri.ozet.dugumSayisi : 0 %></span>
+        <span class="hud-veri-alt"><%= grafVeri ? grafVeri.ozet.kenarSayisi : 0 %> kenar · yoğunluk <%= grafVeri ? grafVeri.ozet.yogunluk : 0 %></span>
+      </div>
+      <div class="hud-veri">
+        <span class="hud-veri-etiket">BELGE</span>
+        <span class="hud-veri-deger sayi"><%= cozDurum ? cozDurum.tamam : 0 %></span>
+        <span class="hud-veri-alt"><%= cozDurum ? cozDurum.bekleyen : 0 %> bekliyor · <%= cozDurum ? sz.bicimliSayi(cozDurum.kelime || 0) : 0 %> kelime okundu</span>
+      </div>
+      <div class="hud-veri">
+        <span class="hud-veri-etiket">SORGU</span>
+        <span class="hud-veri-deger sayi"><%= sz.bicimliSayi(motorDurum.sorgu.toplam || 0) %></span>
+        <span class="hud-veri-alt">ort. <%= motorDurum.sorgu.ort_sure || 0 %> ms</span>
+      </div>
+      <div class="hud-veri <%= cozDurum && cozDurum.risk ? 'hud-veri--uyari' : '' %>">
+        <span class="hud-veri-etiket">RISK ISARETI</span>
+        <span class="hud-veri-deger sayi"><%= cozDurum ? cozDurum.risk : 0 %></span>
+        <span class="hud-veri-alt">belgelerde</span>
+      </div>
+    </div>
+  <% } %>
+</section>
+
+<div class="hud-yan-yana bosluk-ust">
+  <div>
+    <% if (risk) { %>
+      <section class="hud">
+        <div class="hud-serit">
+          <div class="hud-serit-sol">
+            <span class="hud-serit-im" aria-hidden="true">△</span>
+            <h2 class="hud-baslik hud-baslik--kucuk">RISK SIRALAMASI</h2>
+          </div>
+        </div>
+        <%- include('../partials/motor-cevabi', { cevap: risk, sozluk: sz }) %>
+      </section>
+    <% } %>
+
+    <% if (anomali) { %>
+      <section class="hud bosluk-ust">
+        <div class="hud-serit">
+          <div class="hud-serit-sol">
+            <span class="hud-serit-im" aria-hidden="true">∿</span>
+            <h2 class="hud-baslik hud-baslik--kucuk">ANOMALI TARAMASI</h2>
+          </div>
+        </div>
+        <%- include('../partials/motor-cevabi', { cevap: anomali, sozluk: sz }) %>
+      </section>
+    <% } %>
+
+    <% if (bosluk) { %>
+      <section class="hud bosluk-ust">
+        <div class="hud-serit">
+          <div class="hud-serit-sol">
+            <span class="hud-serit-im" aria-hidden="true">◌</span>
+            <h2 class="hud-baslik hud-baslik--kucuk">BILGI BOSLUKLARI</h2>
+          </div>
+        </div>
+        <%- include('../partials/motor-cevabi', { cevap: bosluk, sozluk: sz }) %>
+      </section>
+    <% } %>
+  </div>
+
+  <div>
+    <% if (grafVeri && grafVeri.merkeziyet.length) { %>
+      <section class="hud">
+        <div class="hud-serit">
+          <div class="hud-serit-sol">
+            <span class="hud-serit-im" aria-hidden="true">⬡</span>
+            <h2 class="hud-baslik hud-baslik--kucuk">KILIT AKTORLER</h2>
+          </div>
+          <div class="hud-serit-sag"><a class="cip" href="/analiz/graf">GRAFIK →</a></div>
+        </div>
+        <ul class="baglanti-listesi">
+          <% grafVeri.merkeziyet.slice(0, 10).forEach(function (m) { %>
+            <li class="baglanti-oge">
+              <a class="baglanti-ad" href="/arsiv/varlik/<%= m.id %>">
+                <%= m.ad %>
+                <span class="satir-alt">
+                  <%= sz.VARLIK_TUR_ADI[m.tur] || m.tur %> · <%= m.derece %> bağ ·
+                  aradalık <%= m.aradalik %> · PageRank <%= m.pageRank %>
+                </span>
+              </a>
+              <span class="baglanti-guc"><i data-genislik="<%= Math.round(m.etki) %>"></i></span>
+              <span class="kucuk zumrut sayi"><%= m.etki %></span>
+            </li>
+          <% }); %>
+        </ul>
+      </section>
+    <% } %>
+
+    <% if (grafVeri && grafVeri.tahminler && grafVeri.tahminler.length) { %>
+      <section class="hud bosluk-ust hud--uyari">
+        <div class="hud-serit">
+          <div class="hud-serit-sol">
+            <span class="hud-serit-im" aria-hidden="true">⇢</span>
+            <h2 class="hud-baslik hud-baslik--kucuk">KURULMAMIS OLASI BAGLAR</h2>
+          </div>
+        </div>
+        <p class="hud-altbaslik">
+          Ortak komşu analizi (Adamic-Adar). Bunlar <strong>iddia değil hipotezdir</strong>:
+          iki varlığın çok sayıda ortak bağlantısı var ama aralarında kayıtlı ilişki yok.
+        </p>
+        <ul class="baglanti-listesi bosluk-ust">
+          <% grafVeri.tahminler.slice(0, 8).forEach(function (t) { %>
+            <li class="baglanti-oge">
+              <span class="baglanti-ad">
+                <a href="/arsiv/varlik/<%= t.a %>"><%= t.adA %></a> ↔
+                <a href="/arsiv/varlik/<%= t.b %>"><%= t.adB %></a>
+                <span class="satir-alt">
+                  <%= t.ortak %> ortak bağlantı<%= t.ortakAdlar && t.ortakAdlar.length ? ': ' + t.ortakAdlar.join(', ') : '' %>
+                </span>
+              </span>
+              <span class="kucuk zumrut sayi"><%= t.puan %></span>
+              <a class="cip" href="/analiz/graf?varlik=<%= t.a %>&hedef=<%= t.b %>">YOL →</a>
+            </li>
+          <% }); %>
+        </ul>
+      </section>
+    <% } %>
+
+    <% if (riskli && riskli.length) { %>
+      <section class="hud bosluk-ust hud--tehlike">
+        <div class="hud-serit">
+          <div class="hud-serit-sol">
+            <span class="hud-serit-im" aria-hidden="true">!</span>
+            <h2 class="hud-baslik hud-baslik--kucuk">RISKLI BELGELER</h2>
+          </div>
+        </div>
+        <ul class="baglanti-listesi">
+          <% riskli.forEach(function (b) { %>
+            <li class="baglanti-oge">
+              <a class="baglanti-ad" href="/depo/dosya/<%= b.dosya_id %>/cozumleme">
+                <%= b.ad %>
+                <span class="satir-alt">
+                  <%= b.bicim || '—' %> · <%= sz.boyut(b.boyut_bayt) %>
+                  <%= b.uyusmazlik ? ' · UZANTI UYUSMAZLIGI' : '' %>
+                  <%= b.entropi ? ' · entropi ' + b.entropi : '' %>
+                </span>
+              </a>
+              <% (b.risk_isaretleri || []).slice(0, 3).forEach(function (r) { %>
+                <span class="cip cip--tehlike"><%= r.replace(/_/g, ' ') %></span>
+              <% }); %>
+            </li>
+          <% }); %>
+        </ul>
+      </section>
+    <% } %>
+
+    <% if (motorDurum && motorDurum.sikTerimler && motorDurum.sikTerimler.length) { %>
+      <section class="hud bosluk-ust">
+        <div class="hud-serit">
+          <div class="hud-serit-sol">
+            <span class="hud-serit-im" aria-hidden="true">⁂</span>
+            <h2 class="hud-baslik hud-baslik--kucuk">ARSIVIN KONU HARITASI</h2>
+          </div>
+        </div>
+        <p class="hud-altbaslik">Dizinde en çok geçen gövdeler — arşivin neyle ilgili olduğunu gösterir.</p>
+        <div class="etiketler bosluk-ust">
+          <% motorDurum.sikTerimler.forEach(function (t) { %>
+            <a class="etiket" href="/arsiv/kayitlar?q=<%= encodeURIComponent(t.terim) %>"><%= t.terim %> <span class="sonuk"><%= t.toplam %></span></a>
+          <% }); %>
+        </div>
+      </section>
+    <% } %>
+  </div>
+</div>
+
+<%- include('../partials/kabuk-alt') %>
+<%- include('../partials/son', { betikler: [] }) %>

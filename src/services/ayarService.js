@@ -43,7 +43,9 @@ async function ayarYaz(anahtar, deger, tur = 'metin') {
 async function arayuzAyarlari() {
   const satirlar = await db.satirlar(
     `SELECT anahtar, deger, tur FROM ayarlar
-      WHERE anahtar IN ('sistem_adi','sistem_kodu','ses_aktif','matrix_aktif','gecis_animasyonu','bakim_modu')`,
+      WHERE anahtar IN ('sistem_adi','sistem_kodu','ses_aktif','matrix_aktif',
+                        'gecis_animasyonu','bakim_modu','arayuz_temasi',
+                        'arsiv_tasnif_bandi','arsiv_varsayilan_tasnif','zeka_motor')`,
   );
   const sonuc = {
     sistem_adi: 'CMS VERI MERKEZI',
@@ -52,6 +54,10 @@ async function arayuzAyarlari() {
     matrix_aktif: true,
     gecis_animasyonu: true,
     bakim_modu: false,
+    arayuz_temasi: 'zumrut',
+    arsiv_tasnif_bandi: true,
+    arsiv_varsayilan_tasnif: 'hizmete_ozel',
+    zeka_motor: 'dahili',
   };
   for (const s of satirlar) {
     sonuc[s.anahtar] = s.tur === 'mantik' ? s.deger === 'true'

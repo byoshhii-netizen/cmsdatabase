@@ -1,0 +1,231 @@
+<% locals.tamEkran = true; %>
+<%- include('../partials/bas') %>
+<%- include('../partials/kabuk-ust') %>
+
+<% const sz = sozluk; const q = sorgu || {}; %>
+
+<section class="hud">
+  <div class="hud-serit">
+    <div class="hud-serit-sol">
+      <span class="hud-serit-im" aria-hidden="true">⬡</span>
+      <div>
+        <p class="hud-ustbaslik">
+          <%= grafVeri.dugumler.length %> DUGUM · <%= grafVeri.kenarlar.length %> KENAR
+          <% if (grafVeri.kirpildi) { %>· <%= grafVeri.toplamDugum %> DUGUMDEN KIRPILDI<% } %>
+        </p>
+        <h1 class="hud-baslik">BAGLANTI GRAFIGI</h1>
+      </div>
+    </div>
+    <div class="hud-serit-sag">
+      <% if (odak) { %><span class="cip cip--vurgu">odak: <%= odak.ad %></span><% } %>
+      <% if (hedef) { %><span class="cip cip--vurgu">hedef: <%= hedef.ad %></span><% } %>
+    </div>
+  </div>
+
+  <form method="get" action="/analiz/graf" class="filtre-cubugu">
+    <div class="hud-alan">
+      <label for="g-tur">VARLIK TURU</label>
+      <select id="g-tur" name="tur">
+        <option value="">tümü</option>
+        <% varlikTurleri.forEach(function (t) { %>
+          <option value="<%= t %>" <%= q.tur === t ? 'selected' : '' %>><%= sz.VARLIK_TUR_ADI[t] || t %></option>
+        <% }); %>
+      </select>
+    </div>
+    <div class="hud-alan">
+      <label for="g-guc">EN AZ BAG GUCU</label>
+      <input type="number" id="g-guc" name="guc" min="0" max="100" step="10" value="<%= q.guc || 0 %>">
+    </div>
+    <div class="hud-alan">
+      <label for="g-derinlik">DERINLIK (odak varsa)</label>
+      <input type="number" id="g-derinlik" name="derinlik" min="1" max="4" value="<%= q.derinlik || 2 %>">
+    </div>
+    <div class="hud-alan">
+      <label for="g-limit">EN FAZLA DUGUM</label>
+      <input type="number" id="g-limit" name="limit" min="20" max="1200" step="20" value="<%= q.limit || 400 %>">
+    </div>
+    <% if (q.varlik) { %><input type="hidden" name="varlik" value="<%= q.varlik %>"><% } %>
+    <% if (q.hedef) { %><input type="hidden" name="hedef" value="<%= q.hedef %>"><% } %>
+    <div class="hud-alan">
+      <label class="gorsel-gizli" for="g-gonder">UYGULA</label>
+      <button type="submit" id="g-gonder" class="dugme dugme--kucuk"><span class="dugme-metin">UYGULA</span></button>
+    </div>
+  </form>
+
+  <div class="graf-sarmal">
+    <canvas class="graf-tuval" id="graf-tuval"
+            data-graf="<%= JSON.stringify({ dugumler: grafVeri.dugumler, kenarlar: grafVeri.kenarlar }) %>"
+            data-odak="<%= odak ? odak.id : '' %>"
+            data-hedef="<%= hedef ? hedef.id : '' %>"
+            data-yol="<%= yol && yol.kisaYol ? JSON.stringify(yol.kisaYol.yol) : '' %>"
+            aria-label="Varliklar arasi baglanti grafigi"></canvas>
+
+    <div class="graf-aciklama">
+      <span><i class="graf-renk-kisi" aria-hidden="true"></i> kişi</span>
+      <span><i class="graf-renk-kurum" aria-hidden="true"></i> kurum</span>
+      <span><i class="graf-renk-konum" aria-hidden="true"></i> konum</span>
+      <span><i class="graf-renk-diger" aria-hidden="true"></i> diğer</span>
+    </div>
+
+    <div class="graf-arac-cubugu">
+      <button type="button" class="graf-arac" id="graf-yakinlas" title="Yakınlaştır">＋</button>
+      <button type="button" class="graf-arac" id="graf-uzaklas" title="Uzaklaştır">−</button>
+      <button type="button" class="graf-arac" id="graf-sifirla" title="Görünümü sıfırla">⟲</button>
+      <button type="button" class="graf-arac" id="graf-etiket" title="Etiketleri aç/kapat">A</button>
+      <button type="button" class="graf-arac" id="graf-dondur" title="Yerleşimi durdur/başlat">⏸</button>
+    </div>
+
+    <div class="graf-bilgi" id="graf-bilgi" hidden></div>
+  </div>
+
+  <p class="hud-altbaslik">
+    Düğüm boyutu <strong>etki puanını</strong>, rengi <strong>türü</strong>, kenar kalınlığı
+    <strong>bağ gücünü</strong> gösterir. Düğüm sürüklenebilir; tıklayınca dosye açılır.
+    Yerleşim kuvvet tabanlıdır (itme/çekme dengesi) ve tamamen tarayıcıda hesaplanır.
+  </p>
+</section>
+
+<% if (yol) { %>
+  <section class="hud bosluk-ust">
+    <div class="hud-serit">
+      <div class="hud-serit-sol">
+        <span class="hud-serit-im" aria-hidden="true">⇢</span>
+        <h2 class="hud-baslik hud-baslik--kucuk">YOL ANALIZI</h2>
+      </div>
+    </div>
+    <% if (yol.kisaYol) { %>
+      <p>
+        <strong>En kısa bağ:</strong>
+        <% yol.kisaYol.dugumler.forEach(function (d, i) { %>
+          <a href="/arsiv/varlik/<%= d.id %>"><%= d.ad %></a><%= i < yol.kisaYol.dugumler.length - 1 ? '  →  ' : '' %>
+        <% }); %>
+      </p>
+      <p class="hud-altbaslik">
+        <%= yol.kisaYol.adim %> adım · maliyet <%= yol.kisaYol.maliyet %>
+        (kenar maliyeti = 1 / bağ gücü; güçlü ilişkiler “kısa” sayılır)
+      </p>
+
+      <% if (yol.yollar.length > 1) { %>
+        <h3 class="hud-ustbaslik bosluk-ust">ALTERNATIF YOLLAR</h3>
+        <ul class="baglanti-listesi">
+          <% yol.yollar.slice(1, 6).forEach(function (y) { %>
+            <li class="baglanti-oge">
+              <span class="baglanti-ad kucuk"><%= y.dugumler.map(function (d) { return d.ad; }).join(' → ') %></span>
+              <span class="cip cip--sonuk"><%= y.adim %> adım</span>
+              <span class="cip cip--sonuk">güç <%= y.ortalamaGuc %></span>
+            </li>
+          <% }); %>
+        </ul>
+      <% } %>
+    <% } else { %>
+      <p>Bu iki varlık arasında kayıtlı ilişkiler üzerinden <strong>yol yok</strong>; aynı ağ parçasında değiller.</p>
+    <% } %>
+  </section>
+<% } %>
+
+<div class="hud-yan-yana bosluk-ust">
+  <div>
+    <section class="hud">
+      <div class="hud-serit">
+        <div class="hud-serit-sol">
+          <span class="hud-serit-im" aria-hidden="true">◎</span>
+          <h2 class="hud-baslik hud-baslik--kucuk">AG OZETI</h2>
+        </div>
+      </div>
+      <dl class="ozellik-listesi">
+        <dt>DUGUM</dt><dd><%= grafVeri.ozet.dugumSayisi %></dd>
+        <dt>KENAR</dt><dd><%= grafVeri.ozet.kenarSayisi %></dd>
+        <dt>ORT. DERECE</dt><dd><%= grafVeri.ozet.ortalamaDerece %></dd>
+        <dt>EN YUKSEK DERECE</dt><dd><%= grafVeri.ozet.enYuksekDerece %></dd>
+        <dt>YOGUNLUK</dt><dd><%= grafVeri.ozet.yogunluk %></dd>
+        <dt>PARCA SAYISI</dt><dd><%= grafVeri.ozet.bilesenSayisi %> (en büyüğü <%= grafVeri.ozet.enBuyukBilesen %>)</dd>
+        <dt>YALNIZ DUGUM</dt><dd><%= grafVeri.ozet.yalnizDugum %></dd>
+        <dt>ORT. KUMELENME</dt><dd><%= grafVeri.ozet.ortalamaKumelenme %></dd>
+      </dl>
+    </section>
+
+    <% if (grafVeri.kritik && grafVeri.kritik.kesimNoktalari.length) { %>
+      <section class="hud bosluk-ust hud--uyari">
+        <div class="hud-serit">
+          <div class="hud-serit-sol">
+            <span class="hud-serit-im" aria-hidden="true">✂</span>
+            <h2 class="hud-baslik hud-baslik--kucuk">KRITIK DUGUMLER</h2>
+          </div>
+        </div>
+        <p class="hud-altbaslik">Çıkarıldığında ağ parçalanır — şebekenin düğüm noktaları.</p>
+        <ul class="baglanti-listesi bosluk-ust">
+          <% grafVeri.kritik.kesimNoktalari.slice(0, 12).forEach(function (k) { %>
+            <li class="baglanti-oge">
+              <a class="baglanti-ad" href="/arsiv/varlik/<%= k.id %>"><%= k.ad %>
+                <span class="satir-alt"><%= sz.VARLIK_TUR_ADI[k.tur] || k.tur %></span>
+              </a>
+            </li>
+          <% }); %>
+        </ul>
+        <% if (grafVeri.kritik.kopruler.length) { %>
+          <p class="hud-altbaslik bosluk-ust">
+            <strong><%= grafVeri.kritik.kopruler.length %> köprü kenar</strong> var: kaldırılırsa ağ ikiye ayrılır.
+          </p>
+        <% } %>
+      </section>
+    <% } %>
+  </div>
+
+  <div>
+    <% if (grafVeri.topluluklar && grafVeri.topluluklar.length) { %>
+      <section class="hud">
+        <div class="hud-serit">
+          <div class="hud-serit-sol">
+            <span class="hud-serit-im" aria-hidden="true">⁂</span>
+            <h2 class="hud-baslik hud-baslik--kucuk">TOPLULUKLAR</h2>
+          </div>
+        </div>
+        <p class="hud-altbaslik">Etiket yayılımıyla bulunan, birbirine sıkı bağlı kümeler.</p>
+        <% const adHarita = {}; grafVeri.dugumler.forEach(function (d) { adHarita[d.id] = d.ad; }); %>
+        <ul class="baglanti-listesi bosluk-ust">
+          <% grafVeri.topluluklar.filter(function (g) { return g.boyut >= 2; }).slice(0, 10).forEach(function (g) { %>
+            <li class="baglanti-oge">
+              <span class="cip cip--vurgu">K<%= g.no %></span>
+              <span class="baglanti-ad kucuk">
+                <%= g.uyeler.slice(0, 8).map(function (u) { return adHarita[u] || '#' + u; }).filter(Boolean).join(', ') %>
+                <%= g.boyut > 8 ? ' …' : '' %>
+              </span>
+              <span class="kucuk sonuk sayi"><%= g.boyut %></span>
+            </li>
+          <% }); %>
+        </ul>
+      </section>
+    <% } %>
+
+    <% if (grafVeri.merkeziyet && grafVeri.merkeziyet.length) { %>
+      <section class="hud bosluk-ust">
+        <div class="hud-serit">
+          <div class="hud-serit-sol">
+            <span class="hud-serit-im" aria-hidden="true">★</span>
+            <h2 class="hud-baslik hud-baslik--kucuk">MERKEZIYET</h2>
+          </div>
+        </div>
+        <div class="hud-tablo-sarmal">
+          <table class="hud-tablo">
+            <thead><tr><th>VARLIK</th><th class="sayi daralt">ETKI</th><th class="sayi daralt">DERECE</th><th class="sayi daralt">ARADALIK</th><th class="sayi daralt">PR</th></tr></thead>
+            <tbody>
+              <% grafVeri.merkeziyet.slice(0, 15).forEach(function (m) { %>
+                <tr>
+                  <td><a href="/arsiv/varlik/<%= m.id %>"><%= m.ad %></a></td>
+                  <td class="sayi daralt"><%= m.etki %></td>
+                  <td class="sayi daralt"><%= m.derece %></td>
+                  <td class="sayi daralt"><%= m.aradalik %></td>
+                  <td class="sayi daralt"><%= m.pageRank %></td>
+                </tr>
+              <% }); %>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    <% } %>
+  </div>
+</div>
+
+<%- include('../partials/kabuk-alt') %>
+<% const betikler = ['/js/graf.js']; %>
+<%- include('../partials/son', { betikler: betikler }) %>

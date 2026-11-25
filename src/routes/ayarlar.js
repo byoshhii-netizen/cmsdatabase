@@ -15,6 +15,8 @@ const { sifreSiniri, yazmaSiniri } = require('../middleware/rateLimit');
 const { sesOrnekYukleyici, sesYuklemeHatasiYakala } = require('../middleware/sesYukleme');
 const dogrula = require('../utils/validate');
 const log = require('../services/logService');
+const zekaService = require('../services/zekaService');
+const cozumlemeService = require('../services/cozumlemeService');
 
 const yonlendirici = express.Router();
 
@@ -39,22 +41,32 @@ const DURUM_HATALARI = {
 // ------------------------------------------------------------- GET /ayarlar
 yonlendirici.get('/ayarlar', onbellekYok, girisGerekli, async (req, res, next) => {
   try {
-    const [anahtarlar, ayarlar, hesap, sesOrnegi] = await Promise.all([
+    const [anahtarlar, ayarlar, hesap, sesOrnegi, zekaDurum, cozDurum, sorguGecmisi] = await Promise.all([
       ayarService.apiAnahtarlariListele(),
       ayarService.tumAyarlar(),
       authService.yoneticiGetir(req.yonetici.id),
       sesServisi.sesOrnekBilgisi(),
+      zekaService.durum().catch(() => null),
+      cozumlemeService.durum().catch(() => null),
+      zekaService.sorguGecmisi({ limit: 15 }).catch(() => []),
     ]);
 
     res.render('ayarlar', {
       baslik: 'SISTEM AYARLARI',
       rota: '/ayarlar',
+      betikler: ['/js/ayarlar.js'],
       anahtarlar,
       ayarlar,
       hesap,
       sesOrnegi,
-      bildirim: DURUM_MESAJLARI[String(req.query.durum || '')] || null,
-      hata: DURUM_HATALARI[String(req.query.durum || '')] || null,
+      zekaDurum,
+      cozDurum,
+      sorguGecmisi,
+      sozluk: require('../zeka/dogalDil'),
+      bildirim: DURUM_MESAJLARI[String(req.query.durum || '')]
+        || dogrula.metin(req.query.bildirim, { max: 400 }) || null,
+      hata: DURUM_HATALARI[String(req.query.durum || '')]
+        || dogrula.metin(req.query.hata, { max: 400 }) || null,
     });
   } catch (hata) { next(hata); }
 });
@@ -289,5 +301,99 @@ yonlendirici.post(
     } catch (hata) { next(hata); }
   },
 );
+
+// ============================================================ CEKIRDEK ZEKA
+
+const ZEKA_AYARLARI = {
+  zeka_motor: ['dahili', 'saglayici', 'karma'],
+  zeka_otomatik_cozumleme: ['true', 'false'],
+  zeka_otomatik_varlik: ['true', 'false'],
+  arsiv_tasnif_bandi: ['true', 'false'],
+  arsiv_varsayilan_tasnif: ['acik', 'hizmete_ozel', 'gizli', 'cok_gizli'],
+  arayuz_temasi: ['zumrut', 'kehribar', 'camgobegi', 'mor'],
+};
+
+/** Cekirdek zeka ve arsiv ayarlarini kaydeder. */
+yonlendirici.post('/ayarlar/zeka', onbellekYok, girisGerekli, yazmaSiniri, csrfKoru, async (req, res, next) => {
+  try {
+    const kaydedilen = [];
+
+    for (const [anahtar, izinli] of Object.entries(ZEKA_AYARLARI)) {
+      if (req.body[anahtar] === undefined) continue;
+      const deger = String(req.body[anahtar]);
+      if (!izinli.includes(deger)) continue;
+      await ayarService.ayarYaz(anahtar, deger, { yoneticiId: req.yonetici.id });
+      kaydedilen.push(anahtar);
+    }
+
+    // Sayisal ayarlar
+    for (const [anahtar, alt, ust] of [
+      ['risk_esigi', 0, 100],
+      ['zeka_dizin_parca_kelime', 60, 600],
+    ]) {
+      if (req.body[anahtar] === undefined) continue;
+      const sayi = Number(req.body[anahtar]);
+      if (!Number.isFinite(sayi) || sayi < alt || sayi > ust) continue;
+      await ayarService.ayarYaz(anahtar, String(Math.round(sayi)), { yoneticiId: req.yonetici.id });
+      kaydedilen.push(anahtar);
+    }
+
+    await log.bilgi({
+      kategori: 'ayar', olay: 'zeka_ayari_guncellendi',
+      mesaj: kaydedilen.join(', ') || 'degisiklik yok', yoneticiId: req.yonetici.id,
+    });
+
+    res.redirect(303, `/ayarlar?bildirim=${encodeURIComponent(
+      kaydedilen.length ? `${kaydedilen.length} ayar kaydedildi.` : 'Degisiklik yok.',
+    )}#zeka`);
+  } catch (hata) { next(hata); }
+});
+
+/** Yerel arama dizinini sifirdan kurar. */
+yonlendirici.post('/ayarlar/zeka/dizin', onbellekYok, girisGerekli, yazmaSiniri, csrfKoru, async (req, res, next) => {
+  try {
+    const sonuc = await zekaService.dizinKur({ yoneticiId: req.yonetici.id });
+    const s = sonuc.sayim;
+    res.redirect(303, `/ayarlar?bildirim=${encodeURIComponent(
+      `Dizin kuruldu: ${s.kayit} kayit, ${s.varlik} varlik, ${s.olay} olay, ${s.dosya} belge, ` +
+      `${s.belge} dahili belge, ${s.vaka} vaka -> ${s.parca} parca (${Math.round(sonuc.sureMs / 100) / 10} sn).`,
+    )}#zeka`);
+  } catch (hata) { next(hata); }
+});
+
+/** Siniflandirma modelini egitir. */
+yonlendirici.post('/ayarlar/zeka/model', onbellekYok, girisGerekli, yazmaSiniri, csrfKoru, async (req, res, next) => {
+  try {
+    const modelAdi = String(req.body.model || 'kayit_turu');
+    const sonuc = await zekaService.modelEgit(modelAdi, { yoneticiId: req.yonetici.id });
+
+    if (!sonuc.tamam) {
+      return res.redirect(303, `/ayarlar?hata=${encodeURIComponent(sonuc.hata)}#zeka`);
+    }
+    res.redirect(303, `/ayarlar?bildirim=${encodeURIComponent(
+      `${modelAdi} egitildi: ${sonuc.ozet.toplamBelge} ornek, ${sonuc.ozet.sinifSayisi} sinif, ` +
+      `${sonuc.ozet.dagarcik} terim, capraz dogrulama basarisi %${sonuc.dogrulama.basari ?? '—'}.`,
+    )}#zeka`);
+  } catch (hata) { next(hata); }
+});
+
+/** Modeli siler. */
+yonlendirici.post('/ayarlar/zeka/model-sil', onbellekYok, girisGerekli, yazmaSiniri, csrfKoru, async (req, res, next) => {
+  try {
+    await zekaService.modelSil(String(req.body.model || 'kayit_turu'));
+    res.redirect(303, '/ayarlar?bildirim=Model+silindi.#zeka');
+  } catch (hata) { next(hata); }
+});
+
+/** Bekleyen belgeleri topluca cozumler. */
+yonlendirici.post('/ayarlar/zeka/cozumle', onbellekYok, girisGerekli, yazmaSiniri, csrfKoru, async (req, res, next) => {
+  try {
+    const sayim = await cozumlemeService.bekleyenleriCozumle({ limit: 300, yoneticiId: req.yonetici.id });
+    res.redirect(303, `/ayarlar?bildirim=${encodeURIComponent(
+      `${sayim.toplam} belge islendi: ${sayim.tamam} tamam, ${sayim.kismi} kismi, ` +
+      `${sayim.basarisiz} basarisiz, ${sayim.varlik} varlik bulundu.`,
+    )}#zeka`);
+  } catch (hata) { next(hata); }
+});
 
 module.exports = yonlendirici;

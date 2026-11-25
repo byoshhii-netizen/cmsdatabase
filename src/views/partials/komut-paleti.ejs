@@ -1,0 +1,70 @@
+<%
+  // Komut paleti: Ctrl+K ile acilir. Hem gezinti hem arsiv aramasi hem de
+  // dogrudan cekirdek zekaya soru sormak icin tek giris noktasi.
+  const komutlar = [
+    { im: '▣', ad: 'Kontrol merkezi', yol: '/merkez', tur: 'sayfa' },
+    { im: '◎', ad: 'Arşiv kokpiti', yol: '/arsiv', tur: 'sayfa' },
+    { im: '◆', ad: 'Varlıklar', yol: '/arsiv/varliklar', tur: 'sayfa' },
+    { im: '≣', ad: 'Kayıtlar', yol: '/arsiv/kayitlar', tur: 'sayfa' },
+    { im: '◷', ad: 'Zaman çizgisi', yol: '/arsiv/olaylar', tur: 'sayfa' },
+    { im: '▦', ad: 'Vakalar', yol: '/arsiv/vakalar', tur: 'sayfa' },
+    { im: '◉', ad: 'Kaynaklar', yol: '/arsiv/kaynaklar', tur: 'sayfa' },
+    { im: '⚑', ad: 'İzleme ve uyarılar', yol: '/arsiv/izleme', tur: 'sayfa' },
+    { im: '◬', ad: 'Analiz panosu', yol: '/analiz', tur: 'sayfa' },
+    { im: '⬡', ad: 'Bağlantı grafiği', yol: '/analiz/graf', tur: 'sayfa' },
+    { im: '◷', ad: 'Zaman analizi', yol: '/analiz/zaman', tur: 'sayfa' },
+    { im: '⊕', ad: 'Konum haritası', yol: '/analiz/harita', tur: 'sayfa' },
+    { im: '⁂', ad: 'Konu kümeleri', yol: '/analiz/kumeler', tur: 'sayfa' },
+    { im: '✎', ad: 'Metin çözümleyici', yol: '/analiz/metin', tur: 'sayfa' },
+    { im: '▤', ad: 'Depo', yol: '/depo', tur: 'sayfa' },
+    { im: '◈', ad: 'Pano', yol: '/pano', tur: 'sayfa' },
+    { im: '◉', ad: 'Cambaz — çekirdek zekâ', yol: '/cambaz', tur: 'sayfa' },
+    { im: '⌸', ad: 'Denetim izi', yol: '/arsiv/denetim', tur: 'sayfa' },
+    { im: '≡', ad: 'Loglar', yol: '/loglar', tur: 'sayfa' },
+    { im: '⚙', ad: 'Ayarlar', yol: '/ayarlar', tur: 'sayfa' },
+    { im: '◉', ad: 'Çekirdek zekâ ayarları', yol: '/ayarlar#zeka', tur: 'sayfa' },
+  ];
+
+  const ornekSorular = [
+    'son 30 günde ne oldu',
+    'en riskli varlıklar',
+    'anomali var mı',
+    'çelişki var mı',
+    'hangi boşluklar var',
+    'ağ yapısı nasıl',
+    'arşiv durumu',
+  ];
+%>
+
+<div class="komut-ortu" id="komut-ortu" data-acik="0" role="dialog" aria-modal="true" aria-label="Komut paleti">
+  <div class="komut-kutu">
+    <div class="komut-girdi-sarmal">
+      <span aria-hidden="true">⌕</span>
+      <input
+        type="text"
+        class="komut-girdi"
+        id="komut-girdi"
+        placeholder="Sayfa ara, varlık ara ya da çekirdek zekâya soru sor…"
+        autocomplete="off"
+        spellcheck="false"
+        aria-label="Komut ya da soru"
+      >
+    </div>
+
+    <ul class="komut-liste" id="komut-liste" role="listbox" aria-label="Sonuçlar"></ul>
+
+    <div class="komut-ipucu">
+      <span><kbd>↑</kbd><kbd>↓</kbd> gez</span>
+      <span><kbd>Enter</kbd> aç</span>
+      <span><kbd>Esc</kbd> kapat</span>
+      <span><kbd>?</kbd> ile başlayan metin çekirdek zekâya sorulur</span>
+    </div>
+  </div>
+</div>
+
+<%# Veri aktarimi data-* niteligi ile yapilir: projenin siki CSP politikasi
+    satir ici betik/veri blogu kullanmayi yasaklar. %>
+<div id="komut-verisi" hidden
+     data-komutlar="<%= JSON.stringify(komutlar) %>"
+     data-ornekler="<%= JSON.stringify(ornekSorular) %>"></div>
+<script src="/js/komut.js"></script>

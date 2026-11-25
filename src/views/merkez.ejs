@@ -1,144 +1,328 @@
 <%- include('partials/bas') %>
 <%- include('partials/kabuk-ust') %>
 
-<div class="sayfa-basligi">
-  <div>
-    <div class="yol">// MERKEZ</div>
-    <h1>KONTROL MERKEZI</h1>
+<%
+  const s = panoOzet.sayim || {};
+  const sz = sozluk;
+  function tarih(d, saatli) { return d ? sz.tarihSozcuk(d, { gunAdi: false, saat: Boolean(saatli) }) : '—'; }
+%>
+
+<!-- ======================================================= TEHDIT VE OZET -->
+<section class="hud hud--vurgulu hud--dort-kose" aria-labelledby="durum-basligi">
+  <span class="hud-kose hud-kose--sag-ust" aria-hidden="true"></span>
+  <span class="hud-kose hud-kose--sol-alt" aria-hidden="true"></span>
+
+  <div class="hud-serit">
+    <div class="hud-serit-sol">
+      <span class="hud-serit-im" aria-hidden="true">▣</span>
+      <div>
+        <p class="hud-ustbaslik">DURUM DEGERLENDIRMESI</p>
+        <h1 class="hud-baslik" id="durum-basligi">KONTROL MERKEZI</h1>
+      </div>
+    </div>
+    <div class="hud-serit-sag">
+      <span class="cip cip--sonuk">OPERATOR: <%= yonetici ? yonetici.kullaniciAdi : '—' %></span>
+      <span class="cip cip--vurgu">ÇEKİRDEK ZEKÂ: <%= (sistem.zeka_motor || 'dahili').toLocaleUpperCase('tr-TR') %></span>
+    </div>
   </div>
-  <div class="sag">
-    <span class="lamba lamba--aktif">TUM SISTEMLER CALISIYOR</span>
+
+  <div class="tehdit tehdit--<%= tehdit.seviye %>">
+    <div class="tehdit-kadran" data-puan="<%= tehdit.puan %>" data-seviye="<%= tehdit.seviye %>"
+         role="img" aria-label="Tehdit seviyesi <%= tehdit.puan %> / 100 — <%= tehdit.etiket %>">
+      <canvas aria-hidden="true"></canvas>
+      <div class="tehdit-kadran-yazi">
+        <span class="tehdit-puan"><%= tehdit.puan %></span>
+        <span class="tehdit-etiket"><%= tehdit.etiket %></span>
+      </div>
+    </div>
+
+    <div class="tehdit-bilesenler">
+      <p class="hud-ustbaslik">PUANI OLUSTURAN BILESENLER</p>
+      <% if (tehdit.bilesenler.length) { %>
+        <% tehdit.bilesenler.forEach(function (b) { %>
+          <div class="tehdit-bilesen">
+            <span><%= b.ad %></span>
+            <span class="sayi">+<%= b.puan %></span>
+          </div>
+        <% }); %>
+      <% } else { %>
+        <p class="hud-altbaslik">Dikkat gerektiren bir bulgu yok. Arşiv sakin.</p>
+      <% } %>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================= SAYACLAR -->
+<section class="hud-izgara bosluk-ust" aria-label="Arsiv sayaclari">
+  <div class="hud-veri">
+    <span class="hud-veri-etiket">VARLIK</span>
+    <span class="hud-veri-deger sayi"><%= sz.bicimliSayi(s.varlik || 0) %></span>
+    <span class="hud-veri-alt"><%= s.izlemede || 0 %> tanesi izlemede</span>
+  </div>
+  <div class="hud-veri">
+    <span class="hud-veri-etiket">KAYIT</span>
+    <span class="hud-veri-deger sayi"><%= sz.bicimliSayi(s.kayit || 0) %></span>
+    <span class="hud-veri-alt">son 7 günde <%= s.hafta_kayit || 0 %> yeni</span>
+  </div>
+  <div class="hud-veri <%= (s.bekleyen || 0) > 10 ? 'hud-veri--uyari' : '' %>">
+    <span class="hud-veri-etiket">BEKLEYEN</span>
+    <span class="hud-veri-deger sayi"><%= sz.bicimliSayi(s.bekleyen || 0) %></span>
+    <span class="hud-veri-alt">henüz incelenmedi</span>
+  </div>
+  <div class="hud-veri">
+    <span class="hud-veri-etiket">İLİŞKİ</span>
+    <span class="hud-veri-deger sayi"><%= sz.bicimliSayi(s.iliski || 0) %></span>
+    <span class="hud-veri-alt"><%= s.olay || 0 %> olay kayıtlı</span>
+  </div>
+  <div class="hud-veri <%= (s.uyari || 0) > 0 ? 'hud-veri--tehlike' : 'hud-veri--iyi' %>">
+    <span class="hud-veri-etiket">UYARI</span>
+    <span class="hud-veri-deger sayi"><%= sz.bicimliSayi(s.uyari || 0) %></span>
+    <span class="hud-veri-alt">okunmamış</span>
+  </div>
+  <div class="hud-veri">
+    <span class="hud-veri-etiket">ÇÖZÜMLEME</span>
+    <span class="hud-veri-deger sayi"><%= sz.bicimliSayi(s.cozumleme || 0) %></span>
+    <span class="hud-veri-alt"><%= cozDurum ? cozDurum.bekleyen : 0 %> belge bekliyor</span>
+  </div>
+</section>
+
+<div class="hud-yan-yana bosluk-ust">
+
+  <!-- ===================================================== HAREKETLILIK -->
+  <div>
+    <section class="hud">
+      <div class="hud-serit">
+        <div class="hud-serit-sol">
+          <span class="hud-serit-im" aria-hidden="true">◷</span>
+          <h2 class="hud-baslik hud-baslik--kucuk">30 GUNLUK HAREKETLILIK</h2>
+        </div>
+        <div class="hud-serit-sag">
+          <a class="cip" href="/analiz/zaman?gun=30">AYRINTILI ANALIZ →</a>
+        </div>
+      </div>
+
+      <canvas class="hud-grafik" id="hareket-grafigi"
+              data-seri="<%= JSON.stringify(panoOzet.hareket.map(function (h) { return { etiket: h.etiket, kayit: h.kayit, olay: h.olay }; })) %>"
+              aria-label="Son 30 gunun gunluk kayit ve olay sayilari"></canvas>
+
+      <div class="hud-grafik-aciklama">
+        <span><i aria-hidden="true"></i> Kayıt</span>
+        <span><i class="ikinci" aria-hidden="true"></i> Olay</span>
+        <span>Toplam: <%= panoOzet.hareket.reduce(function (a, h) { return a + h.kayit + h.olay; }, 0) %> giriş</span>
+      </div>
+    </section>
+
+    <!-- ================================================= KILIT AKTORLER -->
+    <section class="hud bosluk-ust">
+      <div class="hud-serit">
+        <div class="hud-serit-sol">
+          <span class="hud-serit-im" aria-hidden="true">⬡</span>
+          <h2 class="hud-baslik hud-baslik--kucuk">KILIT AKTORLER</h2>
+        </div>
+        <div class="hud-serit-sag"><a class="cip" href="/analiz/graf">GRAFIK →</a></div>
+      </div>
+
+      <% if (kilitAktorler && kilitAktorler.length) { %>
+        <p class="hud-altbaslik">
+          Derece, aradalık, PageRank ve bağ gücünün birleşik etki puanı.
+          Yüksek aradalık, o varlığın ağda <em>köprü</em> olduğunu gösterir.
+        </p>
+        <ul class="baglanti-listesi bosluk-ust">
+          <% kilitAktorler.forEach(function (m) { %>
+            <li class="baglanti-oge">
+              <span class="cip cip--sonuk"><%= sz.VARLIK_TUR_ADI[m.tur] || m.tur %></span>
+              <a class="baglanti-ad" href="/arsiv/varlik/<%= m.id %>"><%= m.ad %></a>
+              <span class="kucuk sonuk sayi"><%= m.derece %> bağ</span>
+              <span class="baglanti-guc" title="Etki <%= m.etki %>/100">
+                <i data-genislik="<%= Math.round(m.etki) %>"></i>
+              </span>
+              <span class="kucuk zumrut sayi"><%= m.etki %></span>
+            </li>
+          <% }); %>
+        </ul>
+      <% } else { %>
+        <div class="bos-durum">
+          <span class="bos-durum-im" aria-hidden="true">⬡</span>
+          <p>Ağ analizi için en az üç varlık ve aralarında ilişki gerekiyor.
+             Arşive varlık ekleyip ilişkilendirdiğinde kilit aktörler burada listelenir.</p>
+          <a class="dugme dugme--kucuk" href="/arsiv/varliklar">VARLIK EKLE</a>
+        </div>
+      <% } %>
+    </section>
+  </div>
+
+  <!-- ================================================ YAN SUTUN -->
+  <div>
+    <!-- Uyarilar -->
+    <section class="hud <%= panoOzet.uyarilar.some(function (u) { return u.seviye === 'kritik'; }) ? 'hud--tehlike' : '' %>">
+      <div class="hud-serit">
+        <div class="hud-serit-sol">
+          <span class="hud-serit-im" aria-hidden="true">⚑</span>
+          <h2 class="hud-baslik hud-baslik--kucuk">UYARILAR</h2>
+        </div>
+        <div class="hud-serit-sag"><a class="cip" href="/arsiv/izleme">TUMU →</a></div>
+      </div>
+
+      <% if (panoOzet.uyarilar.length) { %>
+        <div class="kaynak-listesi">
+          <% panoOzet.uyarilar.forEach(function (u) { %>
+            <div class="uyari-kart uyari-kart--<%= u.seviye %>">
+              <span aria-hidden="true"><%= u.seviye === 'kritik' ? '!' : u.seviye === 'uyari' ? '△' : 'i' %></span>
+              <div class="uyari-kart-govde">
+                <div class="uyari-kart-baslik"><%= u.baslik %></div>
+                <% if (u.mesaj) { %><div class="uyari-kart-mesaj"><%= u.mesaj %></div><% } %>
+                <div class="uyari-kart-mesaj">
+                  <%= u.kural_ad ? u.kural_ad + ' · ' : '' %><%= sz.gorece(u.olusturuldu_at) %>
+                </div>
+              </div>
+            </div>
+          <% }); %>
+        </div>
+      <% } else { %>
+        <p class="hud-altbaslik">Okunmamış uyarı yok.</p>
+      <% } %>
+    </section>
+
+    <!-- Acik vakalar -->
+    <section class="hud bosluk-ust">
+      <div class="hud-serit">
+        <div class="hud-serit-sol">
+          <span class="hud-serit-im" aria-hidden="true">▦</span>
+          <h2 class="hud-baslik hud-baslik--kucuk">ACIK VAKALAR</h2>
+        </div>
+        <div class="hud-serit-sag"><a class="cip" href="/arsiv/vakalar">TUMU →</a></div>
+      </div>
+
+      <% if (panoOzet.acikVakalar.length) { %>
+        <ul class="baglanti-listesi">
+          <% panoOzet.acikVakalar.forEach(function (v) { %>
+            <li class="baglanti-oge">
+              <span class="oncelik oncelik--<%= v.oncelik %>"><%= v.oncelik %></span>
+              <a class="baglanti-ad" href="/arsiv/vaka/<%= v.id %>">
+                <%= v.ad %><% if (v.kod_adi) { %> <span class="kucuk sonuk">/ <%= v.kod_adi %></span><% } %>
+              </a>
+              <span class="kucuk sonuk"><%= sz.gorece(v.guncellendi_at) %></span>
+            </li>
+          <% }); %>
+        </ul>
+      <% } else { %>
+        <p class="hud-altbaslik">Açık vaka yok.</p>
+      <% } %>
+    </section>
+
+    <!-- Son kayitlar -->
+    <section class="hud bosluk-ust">
+      <div class="hud-serit">
+        <div class="hud-serit-sol">
+          <span class="hud-serit-im" aria-hidden="true">≣</span>
+          <h2 class="hud-baslik hud-baslik--kucuk">SON KAYITLAR</h2>
+        </div>
+        <div class="hud-serit-sag"><a class="cip" href="/arsiv/kayitlar">TUMU →</a></div>
+      </div>
+
+      <% if (panoOzet.sonKayitlar.length) { %>
+        <ul class="zaman-ray">
+          <% panoOzet.sonKayitlar.forEach(function (k) { %>
+            <li class="zaman-oge <%= k.durum === 'dogrulandi' ? '' : 'zaman-oge--olay' %>">
+              <span class="zaman-zaman"><%= tarih(k.zaman) %></span>
+              <a class="zaman-baslik" href="/arsiv/kayit/<%= k.id %>"><%= k.baslik %></a>
+              <span class="cip cip-tasnif cip-tasnif--<%= k.tasnif %>"><%= sz.TASNIF_ADI[k.tasnif] %></span>
+              <span class="derece derece--<%= String(k.guvenilirlik).toLowerCase() %>"><%= k.guvenilirlik %></span>
+              <span class="cip cip--sonuk"><%= sz.DURUM_ADI[k.durum] || k.durum %></span>
+            </li>
+          <% }); %>
+        </ul>
+      <% } else { %>
+        <p class="hud-altbaslik">Henüz kayıt yok.</p>
+      <% } %>
+    </section>
   </div>
 </div>
 
-<section class="izgara izgara--4">
-  <div class="olcer">
-    <div class="olcer-etiket">KLASOR</div>
-    <div class="olcer-deger mono-sayi"><%= sayimlar.klasor || 0 %></div>
-    <div class="olcer-alt">kayitli sektor</div>
+<!-- ======================================================= SISTEM DURUMU -->
+<section class="hud bosluk-ust">
+  <div class="hud-serit">
+    <div class="hud-serit-sol">
+      <span class="hud-serit-im" aria-hidden="true">⚙</span>
+      <h2 class="hud-baslik hud-baslik--kucuk">SISTEM VE MOTOR</h2>
+    </div>
+    <div class="hud-serit-sag"><a class="cip" href="/ayarlar#zeka">AYARLAR →</a></div>
   </div>
 
-  <div class="olcer olcer--cam">
-    <div class="olcer-etiket">DOSYA</div>
-    <div class="olcer-deger mono-sayi"><%= sayimlar.dosya || 0 %></div>
-    <div class="olcer-alt">
-      <%
-        const bayt = Number(sayimlar.toplam_bayt || 0);
-        const mb = bayt / (1024 * 1024);
-        const gosterim = mb >= 1024 ? (mb / 1024).toFixed(2) + ' GB' : mb.toFixed(2) + ' MB';
-      %>
-      <%= gosterim %> sifreli
+  <div class="hud-izgara--3 hud-izgara">
+    <div class="hud-veri">
+      <span class="hud-veri-etiket">DIZIN</span>
+      <span class="hud-veri-deger hud-veri-deger--kucuk sayi">
+        <%= motorDurum ? sz.bicimliSayi(motorDurum.dizin.parca || 0) : '—' %>
+      </span>
+      <span class="hud-veri-alt">
+        parça · <%= motorDurum ? sz.bicimliSayi(motorDurum.dizin.tekil || 0) : 0 %> tekil terim
+      </span>
+    </div>
+    <div class="hud-veri">
+      <span class="hud-veri-etiket">MODEL</span>
+      <span class="hud-veri-deger hud-veri-deger--kucuk">
+        <% const egitilen = motorDurum ? motorDurum.modeller.filter(function (m) { return m.egitildi; }) : []; %>
+        <%= egitilen.length %>/<%= motorDurum ? motorDurum.modeller.length : 0 %>
+      </span>
+      <span class="hud-veri-alt">
+        <%= egitilen.length && egitilen[0].basari ? 'başarı %' + egitilen[0].basari : 'henüz eğitilmedi' %>
+      </span>
+    </div>
+    <div class="hud-veri">
+      <span class="hud-veri-etiket">DEPO</span>
+      <span class="hud-veri-deger hud-veri-deger--kucuk"><%= sz.boyut(sayimlar.toplam_bayt || 0) %></span>
+      <span class="hud-veri-alt"><%= sayimlar.dosya || 0 %> dosya · <%= sayimlar.klasor || 0 %> sektör</span>
+    </div>
+    <div class="hud-veri">
+      <span class="hud-veri-etiket">SORGU</span>
+      <span class="hud-veri-deger hud-veri-deger--kucuk sayi">
+        <%= motorDurum ? sz.bicimliSayi(motorDurum.sorgu.toplam || 0) : 0 %>
+      </span>
+      <span class="hud-veri-alt">
+        son 7 günde <%= motorDurum ? motorDurum.sorgu.hafta || 0 : 0 %> ·
+        ort. <%= motorDurum ? motorDurum.sorgu.ort_sure || 0 : 0 %> ms
+      </span>
+    </div>
+    <div class="hud-veri <%= kilitSayisi ? 'hud-veri--uyari' : '' %>">
+      <span class="hud-veri-etiket">KILIT</span>
+      <span class="hud-veri-deger hud-veri-deger--kucuk sayi"><%= kilitSayisi %></span>
+      <span class="hud-veri-alt">aktif IP kilidi</span>
+    </div>
+    <div class="hud-veri">
+      <span class="hud-veri-etiket">PAYLASIM</span>
+      <span class="hud-veri-deger hud-veri-deger--kucuk sayi"><%= sayimlar.paylasim || 0 %></span>
+      <span class="hud-veri-alt">aktif dış bağlantı</span>
     </div>
   </div>
 
-  <div class="olcer">
-    <div class="olcer-etiket">PANO</div>
-    <div class="olcer-deger mono-sayi"><%= sayimlar.pano || 0 %></div>
-    <div class="olcer-alt">strateji tuvali</div>
-  </div>
-
-  <div class="olcer <%= (ozet.aktif_kilit || kilitSayisi) ? 'olcer--tehlike' : 'olcer--uyari' %>">
-    <div class="olcer-etiket">AKTIF KILIT</div>
-    <div class="olcer-deger mono-sayi"><%= kilitSayisi || 0 %></div>
-    <div class="olcer-alt">engellenen adres</div>
-  </div>
-</section>
-
-<section class="izgara izgara--2 izgara--genis">
-
-  <div class="panel">
-    <div class="panel-baslik">
-      <span>SON OLAYLAR</span>
-      <span class="sag"><a href="/loglar">tumu &rsaquo;</a></span>
-    </div>
-
-    <% if (!sonLoglar || sonLoglar.length === 0) { %>
-      <div class="bos">
-        <span class="bos-im" aria-hidden="true">≡</span>
-        Henuz kayit yok.
-      </div>
-    <% } else { %>
-      <div class="tablo-sarmal">
-        <table class="veri">
-          <thead>
+  <% if (sonLoglar && sonLoglar.length) { %>
+    <h3 class="hud-ustbaslik bosluk-ust">SON SISTEM OLAYLARI</h3>
+    <div class="hud-tablo-sarmal">
+      <table class="hud-tablo">
+        <thead>
+          <tr>
+            <th class="daralt">ZAMAN</th>
+            <th class="daralt">SEVIYE</th>
+            <th class="daralt">KATEGORI</th>
+            <th>MESAJ</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% sonLoglar.forEach(function (l) { %>
             <tr>
-              <th>ZAMAN</th>
-              <th>SEVIYE</th>
-              <th>KATEGORI</th>
-              <th>OLAY</th>
+              <td class="daralt kucuk sonuk"><%= tarih(l.olusturuldu_at, true) %></td>
+              <td class="daralt"><span class="cip cip--sonuk"><%= l.seviye %></span></td>
+              <td class="daralt kucuk"><%= l.kategori %></td>
+              <td><%= l.mesaj %></td>
             </tr>
-          </thead>
-          <tbody>
-            <% sonLoglar.forEach(function (k) { %>
-              <tr>
-                <td class="zaman"><%= new Date(k.olusturuldu_at).toLocaleString('tr-TR') %></td>
-                <td>
-                  <% const s = k.seviye; %>
-                  <span class="etiket <%= s === 'kritik' || s === 'hata' ? 'etiket--hata' : s === 'uyari' ? 'etiket--uyari' : 'etiket--sonuk' %>"><%= s %></span>
-                </td>
-                <td class="sonuk"><%= k.kategori %></td>
-                <td class="tek-satir"><%= k.olay %><% if (k.mesaj) { %> <span class="sonuk">— <%= k.mesaj %></span><% } %></td>
-              </tr>
-            <% }); %>
-          </tbody>
-        </table>
-      </div>
-    <% } %>
-  </div>
-
-  <div class="panel">
-    <div class="panel-baslik"><span>SISTEM OZETI</span></div>
-
-    <div class="kart-liste">
-      <div class="kart" data-renk="#00ff9c">
-        <span class="kart-im" aria-hidden="true">≡</span>
-        <div class="kart-govde">
-          <div class="kart-ad">TOPLAM KAYIT</div>
-          <div class="kart-alt">son 24 saat: <%= ozet.gunluk || 0 %></div>
-        </div>
-        <div class="kart-sag mono-sayi"><%= ozet.toplam_log || 0 %></div>
-      </div>
-
-      <div class="kart" data-renk="#ff3b5c">
-        <span class="kart-im" aria-hidden="true">!</span>
-        <div class="kart-govde">
-          <div class="kart-ad">HATA / KRITIK</div>
-          <div class="kart-alt">incelenmesi gereken olay</div>
-        </div>
-        <div class="kart-sag mono-sayi"><%= ozet.hata_sayisi || 0 %></div>
-      </div>
-
-      <div class="kart" data-renk="#ffb627">
-        <span class="kart-im" aria-hidden="true">✕</span>
-        <div class="kart-govde">
-          <div class="kart-ad">BASARISIZ GIRIS</div>
-          <div class="kart-alt">son 24 saat</div>
-        </div>
-        <div class="kart-sag mono-sayi"><%= ozet.basarisiz_giris || 0 %></div>
-      </div>
-
-      <div class="kart" data-renk="#22d3ee">
-        <span class="kart-im" aria-hidden="true">↗</span>
-        <div class="kart-govde">
-          <div class="kart-ad">AKTIF PAYLASIM</div>
-          <div class="kart-alt">disa acik baglanti</div>
-        </div>
-        <div class="kart-sag mono-sayi"><%= sayimlar.paylasim || 0 %></div>
-      </div>
+          <% }); %>
+        </tbody>
+      </table>
     </div>
-
-    <div class="panel-baslik bosluk-ust"><span>MODUL DURUMU</span></div>
-    <div class="terminal">
-      <div class="terminal-satir terminal-satir--tamam">kimlik  : argon2id + oturum dogrulama AKTIF</div>
-      <div class="terminal-satir terminal-satir--tamam">depo    : sema hazir, arayuz bekleniyor</div>
-      <div class="terminal-satir terminal-satir--tamam">pano    : sema hazir, tuval bekleniyor</div>
-      <div class="terminal-satir terminal-satir--tamam">cambaz  : sema hazir, motor bekleniyor</div>
-      <div class="terminal-satir terminal-satir--tamam">loglar  : kayit akisi AKTIF</div>
-      <div class="terminal-satir terminal-satir--cikti">bekleniyor<span class="imlec"></span></div>
-    </div>
-  </div>
-
+  <% } %>
 </section>
 
 <%- include('partials/kabuk-alt') %>
-<%- include('partials/son') %>
+<% const betikler = ['/js/merkez.js']; %>
+<%- include('partials/son', { betikler: betikler }) %>

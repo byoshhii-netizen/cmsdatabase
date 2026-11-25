@@ -1,0 +1,119 @@
+<% locals.sayfaTasnifi = olay.tasnif; %>
+<%- include('../partials/bas') %>
+<%- include('../partials/kabuk-ust') %>
+
+<% const sz = sozluk; %>
+
+<section class="hud hud--vurgulu">
+  <div class="hud-serit">
+    <div class="hud-serit-sol">
+      <span class="hud-serit-im" aria-hidden="true">◷</span>
+      <div>
+        <p class="hud-ustbaslik">OLAY <%= olay.kod %></p>
+        <h1 class="hud-baslik"><%= olay.baslik %></h1>
+      </div>
+    </div>
+    <div class="hud-serit-sag">
+      <% if (olay.vaka_kod) { %><a class="cip" href="/arsiv/vaka/<%= olay.vaka_id %>"><%= olay.vaka_kod %> →</a><% } %>
+      <% if (olay.kayit_kod) { %><a class="cip" href="/arsiv/kayit/<%= olay.kayit_id %>"><%= olay.kayit_kod %> →</a><% } %>
+    </div>
+  </div>
+
+  <div class="dosye-satir">
+    <%- include('../partials/arsiv-cip', { oge: olay, turAdi: olay.tur, sozluk: sz }) %>
+    <span class="cip cip--vurgu"><%= sz.tarihSozcuk(olay.zaman, { gunAdi: true, saat: true }) %></span>
+    <% if (olay.belirsizlik !== 'kesin') { %><span class="cip cip--uyari">zaman <%= olay.belirsizlik %></span><% } %>
+    <% if (olay.konum) { %><span class="cip cip--sonuk">⊕ <%= olay.konum %></span><% } %>
+    <span class="cip cip--sonuk">önem <%= olay.onem %></span>
+  </div>
+
+  <% if (olay.aciklama) { %>
+    <div class="motor-cevap bosluk-ust">
+      <% olay.aciklama.split(/\n\s*\n/).forEach(function (p) { %><p><%= p %></p><% }); %>
+    </div>
+  <% } %>
+</section>
+
+<div class="hud-yan-yana bosluk-ust">
+  <div>
+    <section class="hud">
+      <div class="hud-serit">
+        <div class="hud-serit-sol">
+          <span class="hud-serit-im" aria-hidden="true">◆</span>
+          <h2 class="hud-baslik hud-baslik--kucuk">KATILAN VARLIKLAR (<%= varliklar.length %>)</h2>
+        </div>
+      </div>
+      <% if (varliklar.length) { %>
+        <ul class="baglanti-listesi">
+          <% varliklar.forEach(function (v) { %>
+            <li class="baglanti-oge">
+              <span class="cip cip--sonuk"><%= v.rol %></span>
+              <a class="baglanti-ad" href="/arsiv/varlik/<%= v.id %>">
+                <%= v.ad %><span class="satir-alt"><%= sz.VARLIK_TUR_ADI[v.tur] || v.tur %></span>
+              </a>
+            </li>
+          <% }); %>
+        </ul>
+      <% } else { %>
+        <p class="hud-altbaslik">Bu olaya bağlı varlık yok.</p>
+      <% } %>
+    </section>
+  </div>
+
+  <div>
+    <section class="hud">
+      <div class="hud-serit">
+        <div class="hud-serit-sol">
+          <span class="hud-serit-im" aria-hidden="true">⌸</span>
+          <h2 class="hud-baslik hud-baslik--kucuk">KUNYE</h2>
+        </div>
+      </div>
+      <dl class="ozellik-listesi">
+        <dt>KOD</dt><dd><%= olay.kod %></dd>
+        <dt>TUR</dt><dd><%= olay.tur %></dd>
+        <dt>ZAMAN</dt><dd><%= sz.tarihSozcuk(olay.zaman, { gunAdi: true, saat: true }) %></dd>
+        <% if (olay.bitis_zamani) { %><dt>BITIS</dt><dd><%= sz.tarihSozcuk(olay.bitis_zamani, { gunAdi: false, saat: true }) %></dd><% } %>
+        <dt>KESINLIK</dt><dd><%= olay.belirsizlik %></dd>
+        <dt>TASNIF</dt><dd><%= sz.TASNIF_ADI[olay.tasnif] %></dd>
+        <dt>DERECE</dt><dd><%= olay.guvenilirlik %><%= olay.dogruluk %></dd>
+        <% if (olay.enlem !== null && olay.boylam !== null) { %>
+          <dt>KOORDINAT</dt><dd><%= olay.enlem %>, <%= olay.boylam %></dd>
+        <% } %>
+        <dt>GIRIS</dt><dd><%= sz.gorece(olay.olusturuldu_at) %></dd>
+      </dl>
+
+      <form method="post" action="/arsiv/olay/<%= olay.id %>/sil" class="bosluk-ust"
+            data-onay="Bu olayı silmek istediğine emin misin?">
+        <%- csrfAlani() %>
+        <button type="submit" class="dugme dugme--kucuk dugme--sonuk"><span class="dugme-metin">OLAYI SIL</span></button>
+      </form>
+    </section>
+
+    <% if (denetim.length) { %>
+      <section class="hud bosluk-ust">
+        <div class="hud-serit">
+          <div class="hud-serit-sol">
+            <span class="hud-serit-im" aria-hidden="true">⌸</span>
+            <h2 class="hud-baslik hud-baslik--kucuk">DENETIM</h2>
+          </div>
+        </div>
+        <ul class="baglanti-listesi">
+          <% denetim.forEach(function (d) { %>
+            <li class="baglanti-oge">
+              <span class="cip cip--sonuk"><%= d.eylem %></span>
+              <span class="baglanti-ad kucuk"><%= d.kullanici_adi || '—' %>
+                <span class="satir-alt"><%= sz.gorece(d.olusturuldu_at) %></span>
+              </span>
+            </li>
+          <% }); %>
+        </ul>
+      </section>
+    <% } %>
+  </div>
+</div>
+
+<%- include('../partials/kabuk-alt') %>
+<% const betikler = ['/js/arsiv.js']; %>
+<%- include('../partials/son', { betikler: betikler }) %>
+<%- const betikler = arsiv.js -%>
+<% include("partials/son") -%>

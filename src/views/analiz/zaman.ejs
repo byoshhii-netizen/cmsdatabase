@@ -1,0 +1,222 @@
+<%- include('../partials/bas') %>
+<%- include('../partials/kabuk-ust') %>
+
+<% const sz = sozluk; const q = sorgu || {}; const z = zamanVeri; %>
+
+<section class="hud">
+  <div class="hud-serit">
+    <div class="hud-serit-sol">
+      <span class="hud-serit-im" aria-hidden="true">◷</span>
+      <div>
+        <p class="hud-ustbaslik">
+          SON <%= z.gun %> GUN · <%= z.sayim.kayit %> KAYIT + <%= z.sayim.olay %> OLAY ·
+          <%= z.granularite.toLocaleUpperCase('tr-TR') %> BAZINDA <%= z.seri.length %> KOVA
+        </p>
+        <h1 class="hud-baslik">ZAMAN ANALIZI</h1>
+      </div>
+    </div>
+  </div>
+
+  <form method="get" action="/analiz/zaman" class="filtre-cubugu">
+    <div class="hud-alan">
+      <label for="z-gun">DONEM (GUN)</label>
+      <input type="number" id="z-gun" name="gun" min="1" max="3650" value="<%= z.gun %>">
+    </div>
+    <div class="hud-alan">
+      <label for="z-gran">GRANULARITE</label>
+      <select id="z-gran" name="granularite">
+        <option value="">otomatik</option>
+        <% ['saat','gun','hafta','ay'].forEach(function (g) { %>
+          <option value="<%= g %>" <%= q.granularite === g ? 'selected' : '' %>><%= g %></option>
+        <% }); %>
+      </select>
+    </div>
+    <div class="hud-alan">
+      <label for="z-vaka">VAKA</label>
+      <select id="z-vaka" name="vaka">
+        <option value="">tümü</option>
+        <% vakalar.forEach(function (v) { %>
+          <option value="<%= v.id %>" <%= String(q.vaka) === String(v.id) ? 'selected' : '' %>><%= v.kod %> <%= v.ad %></option>
+        <% }); %>
+      </select>
+    </div>
+    <div class="hud-alan">
+      <label class="gorsel-gizli" for="z-gonder">UYGULA</label>
+      <button type="submit" id="z-gonder" class="dugme dugme--kucuk"><span class="dugme-metin">UYGULA</span></button>
+    </div>
+  </form>
+
+  <canvas class="hud-grafik hud-grafik--uzun" id="zaman-grafigi"
+          data-seri="<%= JSON.stringify(z.seri) %>"
+          data-patlama="<%= JSON.stringify((z.patlamalar || []).map(function (p) { return p.dizin; })) %>"
+          data-ongoru="<%= z.ongoru ? JSON.stringify(z.ongoru.tahmin) : '' %>"
+          aria-label="Zaman serisi grafigi"></canvas>
+
+  <div class="hud-grafik-aciklama">
+    <span><i aria-hidden="true"></i> gerçekleşen</span>
+    <% if (z.ongoru) { %><span><i class="ikinci" aria-hidden="true"></i> öngörü (Holt)</span><% } %>
+    <% if (z.patlamalar && z.patlamalar.length) { %>
+      <span class="zaman-isaret zaman-isaret--patlama"><%= z.patlamalar.length %> sıçrama</span>
+    <% } %>
+    <% if (z.sessizlikler && z.sessizlikler.length) { %>
+      <span class="zaman-isaret zaman-isaret--sessizlik"><%= z.sessizlikler.length %> sessizlik</span>
+    <% } %>
+  </div>
+</section>
+
+<div class="hud-izgara bosluk-ust">
+  <% if (z.egilim) { %>
+    <div class="hud-veri">
+      <span class="hud-veri-etiket">EGILIM</span>
+      <span class="hud-veri-deger hud-veri-deger--kucuk"><%= z.egilim.yon %></span>
+      <span class="hud-veri-alt">kova başına %<%= z.egilim.kovaBasinaYuzde %> · R²=<%= z.egilim.r2 %> (<%= z.egilim.guven %> güven)</span>
+    </div>
+  <% } %>
+  <% if (z.ongoru) { %>
+    <div class="hud-veri">
+      <span class="hud-veri-etiket">ONGORU</span>
+      <span class="hud-veri-deger hud-veri-deger--kucuk sayi"><%= z.ongoru.tahmin[0] %></span>
+      <span class="hud-veri-alt">sonraki kova · MAPE %<%= z.ongoru.mape ?? '—' %></span>
+    </div>
+  <% } %>
+  <% if (z.mevsimsellik) { %>
+    <div class="hud-veri">
+      <span class="hud-veri-etiket">EN YOGUN GUN</span>
+      <span class="hud-veri-deger hud-veri-deger--kucuk"><%= z.mevsimsellik.enYogunGun %></span>
+      <span class="hud-veri-alt">en yoğun saat <%= z.mevsimsellik.enYogunSaat %></span>
+    </div>
+    <div class="hud-veri">
+      <span class="hud-veri-etiket">GECE ORANI</span>
+      <span class="hud-veri-deger hud-veri-deger--kucuk sayi">%<%= z.mevsimsellik.geceOrani %></span>
+      <span class="hud-veri-alt">hafta sonu %<%= z.mevsimsellik.haftaSonuOrani %></span>
+    </div>
+  <% } %>
+</div>
+
+<div class="hud-yan-yana bosluk-ust">
+  <div>
+    <section class="hud">
+      <div class="hud-serit">
+        <div class="hud-serit-sol">
+          <span class="hud-serit-im" aria-hidden="true">≡</span>
+          <h2 class="hud-baslik hud-baslik--kucuk">DONEM CIZGISI</h2>
+        </div>
+      </div>
+      <% if (z.ogeler.length) { %>
+        <ul class="zaman-ray">
+          <% z.ogeler.slice(0, 80).forEach(function (o) { %>
+            <li class="zaman-oge <%= o.tur === 'olay' ? (o.onem >= 80 ? 'zaman-oge--kritik' : 'zaman-oge--olay') : '' %>">
+              <span class="zaman-zaman">
+                <%= sz.tarihSozcuk(o.zaman, { gunAdi: false, saat: true }) %> ·
+                <%= o.tur === 'olay' ? 'OLAY' : 'KAYIT' %>
+              </span>
+              <a class="zaman-baslik" href="<%= o.yol %>"><%= o.baslik %></a>
+              <div class="dosye-satir">
+                <span class="kod"><%= o.kod %></span>
+                <% if (o.konum) { %><span class="cip cip--sonuk">⊕ <%= o.konum %></span><% } %>
+                <span class="cip cip-tasnif cip-tasnif--<%= o.tasnif %>"><%= sz.TASNIF_ADI[o.tasnif] %></span>
+                <% if (o.guvenilirlik) { %><span class="derece derece--<%= String(o.guvenilirlik).toLowerCase() %>"><%= o.guvenilirlik %></span><% } %>
+                <% if (o.durum) { %><span class="cip cip--sonuk"><%= sz.DURUM_ADI[o.durum] || o.durum %></span><% } %>
+              </div>
+              <% if (o.varlikAdlari && o.varlikAdlari.length) { %>
+                <span class="satir-alt">İlgili: <%= o.varlikAdlari.filter(Boolean).slice(0, 5).join(', ') %></span>
+              <% } %>
+            </li>
+          <% }); %>
+        </ul>
+      <% } else { %>
+        <div class="bos-durum">
+          <span class="bos-durum-im" aria-hidden="true">◷</span>
+          <p>Bu dönemde arşive giren kayıt ya da olay yok.</p>
+        </div>
+      <% } %>
+    </section>
+  </div>
+
+  <div>
+    <% if (z.patlamalar && z.patlamalar.length) { %>
+      <section class="hud hud--uyari">
+        <div class="hud-serit">
+          <div class="hud-serit-sol">
+            <span class="hud-serit-im" aria-hidden="true">∧</span>
+            <h2 class="hud-baslik hud-baslik--kucuk">HAREKETLILIK SICRAMALARI</h2>
+          </div>
+        </div>
+        <p class="hud-altbaslik">
+          Her kova, kendisinden önceki temel dönemle karşılaştırılır. z-puanı, sıçramanın
+          normal dalgalanmadan kaç standart sapma uzakta olduğunu gösterir.
+        </p>
+        <div class="hud-tablo-sarmal bosluk-ust">
+          <table class="hud-tablo">
+            <thead><tr><th>KOVA</th><th class="sayi daralt">GIRIS</th><th class="sayi daralt">TEMEL ORT.</th><th class="sayi daralt">KAT</th><th class="sayi daralt">Z</th></tr></thead>
+            <tbody>
+              <% z.patlamalar.slice(-12).reverse().forEach(function (p) { %>
+                <tr>
+                  <td><%= p.etiket %></td>
+                  <td class="sayi daralt"><%= p.deger %></td>
+                  <td class="sayi daralt"><%= p.temelOrtalama %></td>
+                  <td class="sayi daralt"><%= p.kat ?? '—' %></td>
+                  <td class="sayi daralt"><%= p.z %></td>
+                </tr>
+              <% }); %>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    <% } %>
+
+    <% if (z.sessizlikler && z.sessizlikler.length) { %>
+      <section class="hud bosluk-ust">
+        <div class="hud-serit">
+          <div class="hud-serit-sol">
+            <span class="hud-serit-im" aria-hidden="true">∨</span>
+            <h2 class="hud-baslik hud-baslik--kucuk">SESSIZLIK ARALIKLARI</h2>
+          </div>
+        </div>
+        <p class="hud-altbaslik">Düzenli hareket varken aniden duran dönemler. İstihbaratta
+          “iletişim kesildi” sinyali olabilir.</p>
+        <ul class="baglanti-listesi bosluk-ust">
+          <% z.sessizlikler.slice(-8).forEach(function (s) { %>
+            <li class="baglanti-oge">
+              <span class="zaman-isaret zaman-isaret--sessizlik"><%= s.uzunluk %> kova</span>
+              <span class="baglanti-ad kucuk">
+                <%= s.basEtiket %> → <%= s.sonEtiket %>
+                <span class="satir-alt">beklenen ≈ <%= s.beklenenHareket %> giriş<%= s.suruyor ? ' · hâlâ sürüyor' : '' %></span>
+              </span>
+            </li>
+          <% }); %>
+        </ul>
+      </section>
+    <% } %>
+
+    <% if (z.mevsimsellik) { %>
+      <section class="hud bosluk-ust">
+        <div class="hud-serit">
+          <div class="hud-serit-sol">
+            <span class="hud-serit-im" aria-hidden="true">◴</span>
+            <h2 class="hud-baslik hud-baslik--kucuk">ZAMANLAMA ORUNTUSU</h2>
+          </div>
+        </div>
+        <canvas class="hud-grafik hud-grafik--kisa" id="saat-grafigi"
+                data-seri="<%= JSON.stringify(z.mevsimsellik.saatler.map(function (s) { return { etiket: String(s.saat), kayit: s.deger, olay: 0 }; })) %>"
+                aria-label="Gunun saatlerine gore dagilim"></canvas>
+        <p class="hud-altbaslik">Günün saatlerine göre dağılım (0–23)</p>
+
+        <div class="bosluk-ust">
+          <% z.mevsimsellik.gunler.forEach(function (g) { %>
+            <div class="hud-olcer">
+              <div class="hud-olcer-ust">
+                <span><%= g.ad %></span>
+                <span class="hud-olcer-deger"><%= g.deger %> (%<%= g.oran %>)</span>
+              </div>
+              <div class="hud-olcer-ray"><span class="hud-olcer-dolu" data-oran="<%= g.oran %>"></span></div>
+            </div>
+          <% }); %>
+        </div>
+      </section>
+    <% } %>
+  </div>
+</div>
+
+<%- include('../partials/kabuk-alt') %>
+<%- include('../partials/son', { betikler: [] }) %>

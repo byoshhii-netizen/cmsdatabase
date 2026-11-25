@@ -1,184 +1,164 @@
 'use strict';
-/* ==========================================================================
-   public/js/ses.js
-   Web Audio API ile uretilen terminal ses efektleri.
-   Hicbir ses dosyasi indirilmez; tum sesler osilatorle sentezlenir.
-   Tarayici politikasi geregi AudioContext ilk kullanici hareketinde acilir.
-   ========================================================================== */
-
+/**
+ * public/js/ses.js
+ * Arayuz ses efektleri. Hicbir ses dosyasi yuklenmez; tum tonlar Web Audio
+ * API ile anlik uretilir — kapali devre calisma ilkesine uygundur.
+ *
+ * Dis arayuz (cekirdek.js bunlari bekler):
+ *   Ses.uyandir()        ilk kullanici hareketinde AudioContext'i acar
+ *   Ses.acikMi()         ses acik mi
+ *   Ses.degistir()       ac/kapat, tercihi localStorage'a yazar
+ *   Ses.sunucuKapatti()  sunucu ayari kapaliysa butun sesleri susturur
+ *   Ses.tik() .gezin() .onay() .yazma() .uyari() .hata() .basarili()
+ */
 (function (kuresel) {
-  const DEPO_ANAHTARI = 'cms_ses_acik';
+  const ANAHTAR = 'cms.ses';
+  const HAREKET_AZ = kuresel.matchMedia
+    && kuresel.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   let baglam = null;
   let anaKazanc = null;
+  let sunucuIzni = true;
   let acik = true;
-  let hazir = false;
+  let sonYazma = 0;
 
-  /** Kullanicinin daha once kaydettigi tercihi oku. */
   try {
-    const kayit = kuresel.localStorage.getItem(DEPO_ANAHTARI);
-    if (kayit !== null) acik = kayit === '1';
-  } catch (_) { /* localStorage kapali olabilir */ }
+    const kayitli = kuresel.localStorage.getItem(ANAHTAR);
+    if (kayitli !== null) acik = kayitli === '1';
+  } catch (hata) { /* depolama yok: varsayilan acik */ }
 
-  function baglamAc() {
-    if (baglam) return baglam;
-    const AC = kuresel.AudioContext || kuresel.webkitAudioContext;
-    if (!AC) return null;
-    try {
-      baglam = new AC();
-      anaKazanc = baglam.createGain();
-      anaKazanc.gain.value = 0.16;          // genel ses seviyesi (kisik)
-      anaKazanc.connect(baglam.destination);
-      hazir = true;
-    } catch (_) {
-      baglam = null;
+  function kullanilabilir() {
+    return acik && sunucuIzni && !HAREKET_AZ;
+  }
+
+  function uyandir() {
+    if (baglam) {
+      if (baglam.state === 'suspended') baglam.resume().catch(function () {});
+      return baglam;
     }
+    const Yapici = kuresel.AudioContext || kuresel.webkitAudioContext;
+    if (!Yapici) return null;
+    try {
+      baglam = new Yapici();
+      anaKazanc = baglam.createGain();
+      anaKazanc.gain.value = 0.085;
+      anaKazanc.connect(baglam.destination);
+    } catch (hata) { baglam = null; }
     return baglam;
   }
 
-  function devamEt() {
-    if (baglam && baglam.state === 'suspended') baglam.resume().catch(() => {});
+  /**
+   * Tek bir ton calar.
+   * @param {number} frekans  Hz
+   * @param {number} sure     saniye
+   * @param {string} bicim    'sine' | 'square' | 'triangle' | 'sawtooth'
+   * @param {number} hacim    0-1
+   * @param {number} gecikme  saniye
+   * @param {number} bitisFrekans  kaydirma hedefi (yoksa sabit)
+   */
+  function ton(frekans, sure, bicim, hacim, gecikme, bitisFrekans) {
+    if (!kullanilabilir()) return;
+    const b = uyandir();
+    if (!b) return;
+
+    const t0 = b.currentTime + (gecikme || 0);
+    const osi = b.createOscillator();
+    const kaz = b.createGain();
+
+    osi.type = bicim || 'sine';
+    osi.frequency.setValueAtTime(frekans, t0);
+    if (bitisFrekans) osi.frequency.exponentialRampToValueAtTime(Math.max(20, bitisFrekans), t0 + sure);
+
+    // Yumusak zarf: tiklama sesini onler
+    const tepe = Math.max(0.0001, hacim === undefined ? 0.6 : hacim);
+    kaz.gain.setValueAtTime(0.0001, t0);
+    kaz.gain.exponentialRampToValueAtTime(tepe, t0 + Math.min(0.012, sure * 0.3));
+    kaz.gain.exponentialRampToValueAtTime(0.0001, t0 + sure);
+
+    osi.connect(kaz);
+    kaz.connect(anaKazanc);
+    osi.start(t0);
+    osi.stop(t0 + sure + 0.02);
   }
 
-  /** Tek ton uretir. */
-  function ton({ frekans = 440, sure = 0.08, tur = 'square', hacim = 0.5, bitisFrekans = null, gecikme = 0 }) {
-    if (!acik) return;
-    const b = baglamAc();
+  /** Kisa gurultu patlamasi: dokunsal geri bildirim hissi verir. */
+  function gurultu(sure, hacim) {
+    if (!kullanilabilir()) return;
+    const b = uyandir();
     if (!b) return;
-    devamEt();
-
-    const t0 = b.currentTime + gecikme;
-    const osilator = b.createOscillator();
-    const kazanc = b.createGain();
-
-    osilator.type = tur;
-    osilator.frequency.setValueAtTime(frekans, t0);
-    if (bitisFrekans) osilator.frequency.exponentialRampToValueAtTime(Math.max(bitisFrekans, 1), t0 + sure);
-
-    // Yumusak zarf: tiklama sesini (click artifact) engeller
-    kazanc.gain.setValueAtTime(0.0001, t0);
-    kazanc.gain.exponentialRampToValueAtTime(hacim, t0 + 0.006);
-    kazanc.gain.exponentialRampToValueAtTime(0.0001, t0 + sure);
-
-    osilator.connect(kazanc);
-    kazanc.connect(anaKazanc);
-    osilator.start(t0);
-    osilator.stop(t0 + sure + 0.02);
-  }
-
-  /** Filtrelenmis gurultu (tarama, parazit efektleri icin). */
-  function gurultu({ sure = 0.18, hacim = 0.25, baslangicHz = 400, bitisHz = 2600, q = 6 }) {
-    if (!acik) return;
-    const b = baglamAc();
-    if (!b) return;
-    devamEt();
 
     const ornekSayisi = Math.floor(b.sampleRate * sure);
-    const tampon = b.createBuffer(1, ornekSayisi, b.sampleRate);
+    const tampon = b.createBuffer(1, Math.max(1, ornekSayisi), b.sampleRate);
     const veri = tampon.getChannelData(0);
-    for (let i = 0; i < ornekSayisi; i++) veri[i] = Math.random() * 2 - 1;
+    for (let i = 0; i < ornekSayisi; i += 1) {
+      veri[i] = (Math.random() * 2 - 1) * (1 - i / ornekSayisi);
+    }
 
     const kaynak = b.createBufferSource();
     kaynak.buffer = tampon;
 
     const suzgec = b.createBiquadFilter();
     suzgec.type = 'bandpass';
-    suzgec.Q.value = q;
-    suzgec.frequency.setValueAtTime(baslangicHz, b.currentTime);
-    suzgec.frequency.exponentialRampToValueAtTime(bitisHz, b.currentTime + sure);
+    suzgec.frequency.value = 1800;
+    suzgec.Q.value = 0.9;
 
-    const kazanc = b.createGain();
-    kazanc.gain.setValueAtTime(hacim, b.currentTime);
-    kazanc.gain.exponentialRampToValueAtTime(0.0001, b.currentTime + sure);
+    const kaz = b.createGain();
+    kaz.gain.value = hacim === undefined ? 0.25 : hacim;
 
     kaynak.connect(suzgec);
-    suzgec.connect(kazanc);
-    kazanc.connect(anaKazanc);
+    suzgec.connect(kaz);
+    kaz.connect(anaKazanc);
     kaynak.start();
   }
 
-  /* --------------------------------------------------------- SES PALETI */
-
   const Ses = {
-    /** Kisa mekanik tus tiklamasi */
-    tik() { ton({ frekans: 1180, bitisFrekans: 620, sure: 0.035, tur: 'square', hacim: 0.3 }); },
+    uyandir,
+    acikMi: function () { return acik && sunucuIzni; },
 
-    /** Daha yumusak gezinme tiklamasi */
-    gezin() { ton({ frekans: 760, bitisFrekans: 1240, sure: 0.055, tur: 'triangle', hacim: 0.32 }); },
-
-    /** Klavye yazma blipi (rastgele perdeli) */
-    yazma() {
-      const f = 1500 + Math.random() * 700;
-      ton({ frekans: f, bitisFrekans: f * 0.6, sure: 0.022, tur: 'square', hacim: 0.14 });
-    },
-
-    /** Erisim onaylandi: yukselen arpej */
-    erisim() {
-      ton({ frekans: 523.25, sure: 0.09, tur: 'triangle', hacim: 0.45, gecikme: 0 });
-      ton({ frekans: 659.25, sure: 0.09, tur: 'triangle', hacim: 0.45, gecikme: 0.085 });
-      ton({ frekans: 783.99, sure: 0.09, tur: 'triangle', hacim: 0.45, gecikme: 0.17 });
-      ton({ frekans: 1046.5, sure: 0.24, tur: 'sine', hacim: 0.4, gecikme: 0.255 });
-      gurultu({ sure: 0.3, hacim: 0.07, baslangicHz: 900, bitisHz: 3600, q: 3 });
-    },
-
-    /** Erisim reddedildi: alcalan sert ikili */
-    ret() {
-      ton({ frekans: 220, bitisFrekans: 110, sure: 0.16, tur: 'sawtooth', hacim: 0.4 });
-      ton({ frekans: 180, bitisFrekans: 70, sure: 0.26, tur: 'sawtooth', hacim: 0.36, gecikme: 0.14 });
-    },
-
-    /** Uyari: cift bip */
-    uyari() {
-      ton({ frekans: 880, sure: 0.07, tur: 'square', hacim: 0.34 });
-      ton({ frekans: 880, sure: 0.07, tur: 'square', hacim: 0.34, gecikme: 0.12 });
-    },
-
-    /** Onay: tek net bip */
-    onay() { ton({ frekans: 1046.5, bitisFrekans: 1568, sure: 0.12, tur: 'triangle', hacim: 0.38 }); },
-
-    /** Sayfa gecisi: supurme */
-    gecis() {
-      gurultu({ sure: 0.26, hacim: 0.16, baslangicHz: 220, bitisHz: 3200, q: 2 });
-      ton({ frekans: 320, bitisFrekans: 1100, sure: 0.2, tur: 'sine', hacim: 0.2 });
-    },
-
-    /** Tarama / veri yukleme */
-    tarama() { gurultu({ sure: 0.45, hacim: 0.12, baslangicHz: 500, bitisHz: 4200, q: 8 }); },
-
-    /** Acilis sinyali */
-    acilis() {
-      ton({ frekans: 196, sure: 0.3, tur: 'sine', hacim: 0.3 });
-      ton({ frekans: 392, sure: 0.3, tur: 'sine', hacim: 0.22, gecikme: 0.06 });
-      gurultu({ sure: 0.5, hacim: 0.06, baslangicHz: 180, bitisHz: 2400, q: 2 });
-    },
-
-    /** Kritik alarm */
-    alarm() {
-      for (let i = 0; i < 3; i++) {
-        ton({ frekans: 740, bitisFrekans: 480, sure: 0.12, tur: 'sawtooth', hacim: 0.3, gecikme: i * 0.18 });
-      }
-    },
-
-    /* -------------------------------------------------------- Yonetim */
-
-    acikMi() { return acik; },
-
-    ayarla(durum) {
-      acik = Boolean(durum);
-      try { kuresel.localStorage.setItem(DEPO_ANAHTARI, acik ? '1' : '0'); } catch (_) {}
-      if (acik) { baglamAc(); devamEt(); Ses.onay(); }
+    degistir: function () {
+      acik = !acik;
+      try { kuresel.localStorage.setItem(ANAHTAR, acik ? '1' : '0'); } catch (hata) { /* yoksay */ }
+      if (acik) { uyandir(); ton(880, 0.07, 'sine', 0.5); }
       return acik;
     },
 
-    degistir() { return Ses.ayarla(!acik); },
+    sunucuKapatti: function () { sunucuIzni = false; },
 
-    /** Sunucu ayarı sesi kapattiysa tamamen devre disi birak. */
-    sunucuKapatti() { acik = false; },
+    /** Dugme tiklamasi: kisa, kuru. */
+    tik: function () { ton(1320, 0.035, 'square', 0.22); },
 
-    hazirMi() { return hazir; },
+    /** Baglanti/kart gezinmesi: yukari dogru kucuk bir kaydirma. */
+    gezin: function () { ton(660, 0.05, 'triangle', 0.3, 0, 880); },
 
-    /** Ilk kullanici hareketinde baglami ac. */
-    uyandir() { baglamAc(); devamEt(); },
+    /** Enter / onay: iki notali kisa arpej. */
+    onay: function () {
+      ton(784, 0.06, 'sine', 0.4);
+      ton(1175, 0.08, 'sine', 0.33, 0.055);
+    },
+
+    /** Tus basimi: cok kisik, hizli tekrarda bogulmasin diye kisitlanir. */
+    yazma: function () {
+      const simdi = Date.now();
+      if (simdi - sonYazma < 38) return;
+      sonYazma = simdi;
+      gurultu(0.012, 0.08);
+    },
+
+    /** Uyari: alcaktan yukari iki darbe. */
+    uyari: function () {
+      ton(540, 0.1, 'square', 0.3);
+      ton(680, 0.14, 'square', 0.26, 0.11);
+    },
+
+    /** Hata: asagi dogru kaydirma. */
+    hata: function () { ton(420, 0.22, 'sawtooth', 0.26, 0, 180); },
+
+    /** Basarili islem: ucgen arpej. */
+    basarili: function () {
+      ton(659, 0.07, 'sine', 0.34);
+      ton(880, 0.07, 'sine', 0.32, 0.07);
+      ton(1319, 0.11, 'sine', 0.28, 0.14);
+    },
   };
 
   kuresel.Ses = Ses;

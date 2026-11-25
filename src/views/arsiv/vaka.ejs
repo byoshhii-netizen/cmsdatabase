@@ -1,0 +1,214 @@
+<% locals.sayfaTasnifi = vaka.tasnif; %>
+<%- include('../partials/bas') %>
+<%- include('../partials/kabuk-ust') %>
+
+<% const sz = sozluk; %>
+
+<section class="hud hud--vurgulu hud--dort-kose">
+  <span class="hud-kose hud-kose--sag-ust" aria-hidden="true"></span>
+  <span class="hud-kose hud-kose--sol-alt" aria-hidden="true"></span>
+  <div class="dosye-bas">
+    <div class="dosye-kimlik">
+      <div class="dosye-amblem" aria-hidden="true">▦</div>
+      <div class="dosye-ad">
+        <p class="hud-ustbaslik">VAKA DOSYASI · <%= vaka.kod %></p>
+        <h1><%= vaka.ad %></h1>
+        <% if (vaka.kod_adi) { %><p class="hud-altbaslik">Kod adı: <strong><%= vaka.kod_adi %></strong></p><% } %>
+        <div class="dosye-satir">
+          <%- include('../partials/arsiv-cip', { oge: vaka, sozluk: sz }) %>
+          <% if (vaka.sorumlu) { %><span class="cip cip--sonuk">sorumlu: <%= vaka.sorumlu %></span><% } %>
+          <% if (vaka.hedef_tarih) { %>
+            <span class="cip cip--uyari">hedef: <%= sz.tarihSozcuk(vaka.hedef_tarih, { gunAdi: false }) %></span>
+          <% } %>
+        </div>
+      </div>
+    </div>
+    <div class="dosye-olculer">
+      <div class="hud-veri"><span class="hud-veri-etiket">KAYIT</span><span class="hud-veri-deger hud-veri-deger--kucuk sayi"><%= kayitlar.toplam %></span></div>
+      <div class="hud-veri"><span class="hud-veri-etiket">OLAY</span><span class="hud-veri-deger hud-veri-deger--kucuk sayi"><%= olaylar.toplam %></span></div>
+      <div class="hud-veri"><span class="hud-veri-etiket">VARLIK</span><span class="hud-veri-deger hud-veri-deger--kucuk sayi"><%= varliklar.length %></span></div>
+    </div>
+  </div>
+  <% if (vaka.aciklama) { %><p class="bosluk-ust"><%= vaka.aciklama %></p><% } %>
+</section>
+
+<% if (zamanVeri && zamanVeri.seri && zamanVeri.seri.length > 2) { %>
+  <section class="hud bosluk-ust">
+    <div class="hud-serit">
+      <div class="hud-serit-sol">
+        <span class="hud-serit-im" aria-hidden="true">◷</span>
+        <h2 class="hud-baslik hud-baslik--kucuk">VAKA HAREKETLILIGI</h2>
+      </div>
+      <div class="hud-serit-sag">
+        <a class="cip" href="/analiz/zaman?vaka=<%= vaka.id %>&gun=365">AYRINTI →</a>
+      </div>
+    </div>
+    <canvas class="hud-grafik" id="vaka-grafigi"
+            data-seri="<%= JSON.stringify(zamanVeri.seri.map(function (k) { return { etiket: k.etiket, kayit: k.deger, olay: 0 }; })) %>"
+            aria-label="Vakanin zaman icindeki hareketliligi"></canvas>
+    <% if (zamanVeri.egilim) { %>
+      <p class="hud-altbaslik">
+        Eğilim: <strong><%= zamanVeri.egilim.yon %></strong>
+        (kova başına %<%= zamanVeri.egilim.kovaBasinaYuzde %>, R²=<%= zamanVeri.egilim.r2 %>,
+        güven <%= zamanVeri.egilim.guven %>)
+        <% if (zamanVeri.patlamalar && zamanVeri.patlamalar.length) { %>
+          · <%= zamanVeri.patlamalar.length %> hareketlilik sıçraması
+        <% } %>
+      </p>
+    <% } %>
+  </section>
+<% } %>
+
+<div class="hud-yan-yana bosluk-ust">
+  <div>
+    <section class="hud">
+      <div class="hud-serit">
+        <div class="hud-serit-sol">
+          <span class="hud-serit-im" aria-hidden="true">≣</span>
+          <h2 class="hud-baslik hud-baslik--kucuk">VAKA KAYITLARI (<%= kayitlar.toplam %>)</h2>
+        </div>
+        <div class="hud-serit-sag"><a class="cip" href="/arsiv/kayitlar?vaka=<%= vaka.id %>">TUMU →</a></div>
+      </div>
+      <% if (kayitlar.kayitlar.length) { %>
+        <div class="hud-tablo-sarmal">
+          <table class="hud-tablo">
+            <thead><tr><th class="daralt">KOD</th><th>BASLIK</th><th class="daralt">DERECE</th><th class="daralt">DURUM</th><th class="daralt">ZAMAN</th></tr></thead>
+            <tbody>
+              <% kayitlar.kayitlar.forEach(function (k) { %>
+                <tr>
+                  <td class="daralt"><span class="kod"><%= k.kod %></span></td>
+                  <td><a href="/arsiv/kayit/<%= k.id %>"><%= k.baslik %></a></td>
+                  <td class="daralt"><span class="derece derece--<%= String(k.guvenilirlik).toLowerCase() %>"><%= k.guvenilirlik %><%= k.dogruluk %></span></td>
+                  <td class="daralt kucuk"><span class="durum-nokta durum-nokta--<%= k.durum %>" aria-hidden="true"></span> <%= sz.DURUM_ADI[k.durum] || k.durum %></td>
+                  <td class="daralt kucuk sonuk"><%= sz.tarihSozcuk(k.zaman, { gunAdi: false }) %></td>
+                </tr>
+              <% }); %>
+            </tbody>
+          </table>
+        </div>
+      <% } else { %><p class="hud-altbaslik">Bu vakaya bağlı kayıt yok.</p><% } %>
+    </section>
+
+    <section class="hud bosluk-ust">
+      <div class="hud-serit">
+        <div class="hud-serit-sol">
+          <span class="hud-serit-im" aria-hidden="true">◷</span>
+          <h2 class="hud-baslik hud-baslik--kucuk">VAKA ZAMAN CIZGISI (<%= olaylar.toplam %>)</h2>
+        </div>
+      </div>
+      <% if (olaylar.olaylar.length) { %>
+        <ul class="zaman-ray">
+          <% olaylar.olaylar.slice(0, 25).forEach(function (o) { %>
+            <li class="zaman-oge <%= o.onem >= 80 ? 'zaman-oge--kritik' : 'zaman-oge--olay' %>">
+              <span class="zaman-zaman"><%= sz.tarihSozcuk(o.zaman, { gunAdi: false, saat: true }) %></span>
+              <a class="zaman-baslik" href="/arsiv/olay/<%= o.id %>"><%= o.baslik %></a>
+              <% if (o.konum) { %><span class="cip cip--sonuk">⊕ <%= o.konum %></span><% } %>
+            </li>
+          <% }); %>
+        </ul>
+      <% } else { %><p class="hud-altbaslik">Bu vakaya bağlı olay yok.</p><% } %>
+    </section>
+  </div>
+
+  <div>
+    <section class="hud">
+      <div class="hud-serit">
+        <div class="hud-serit-sol">
+          <span class="hud-serit-im" aria-hidden="true">◆</span>
+          <h2 class="hud-baslik hud-baslik--kucuk">VAKA VARLIKLARI (<%= varliklar.length %>)</h2>
+        </div>
+      </div>
+      <% if (varliklar.length) { %>
+        <ul class="baglanti-listesi">
+          <% varliklar.forEach(function (v) { %>
+            <li class="baglanti-oge">
+              <span class="cip cip--sonuk"><%= sz.VARLIK_TUR_ADI[v.tur] || v.tur %></span>
+              <a class="baglanti-ad" href="/arsiv/varlik/<%= v.id %>"><%= v.ad %></a>
+              <span class="kucuk sonuk sayi"><%= v.onem %></span>
+              <form method="post" action="/arsiv/vaka/<%= vaka.id %>/oge" class="dugme-sirasi">
+                <%- csrfAlani() %>
+                <input type="hidden" name="oge_tur" value="varlik">
+                <input type="hidden" name="oge_id" value="<%= v.id %>">
+                <input type="hidden" name="islem" value="cikar">
+                <button type="submit" class="dugme dugme--kucuk dugme--sonuk"><span class="dugme-metin">×</span></button>
+              </form>
+            </li>
+          <% }); %>
+        </ul>
+      <% } else { %><p class="hud-altbaslik">Vakaya varlık eklenmemiş.</p><% } %>
+
+      <form method="post" action="/arsiv/vaka/<%= vaka.id %>/oge" class="hud-form bosluk-ust">
+        <%- csrfAlani() %>
+        <input type="hidden" name="oge_tur" value="varlik">
+        <div class="hud-alan">
+          <label for="vv-ad">VARLIK EKLE</label>
+          <input type="text" id="vv-ad" class="varlik-arama" data-hedef="vv-id" placeholder="ad yaz ve seç" autocomplete="off">
+          <input type="hidden" id="vv-id" name="oge_id">
+          <ul class="varlik-oneri" id="vv-ad-oneri" hidden></ul>
+        </div>
+        <div class="hud-dugmeler">
+          <button type="submit" class="dugme dugme--kucuk"><span class="dugme-metin">EKLE</span></button>
+        </div>
+      </form>
+    </section>
+
+    <section class="hud bosluk-ust">
+      <div class="hud-serit">
+        <div class="hud-serit-sol">
+          <span class="hud-serit-im" aria-hidden="true">⚙</span>
+          <h2 class="hud-baslik hud-baslik--kucuk">VAKA AYARLARI</h2>
+        </div>
+      </div>
+      <form method="post" action="/arsiv/vaka/<%= vaka.id %>" class="hud-form">
+        <%- csrfAlani() %>
+        <div class="hud-alan">
+          <label for="dv-ad">AD</label>
+          <input type="text" id="dv-ad" name="ad" value="<%= vaka.ad %>" required>
+        </div>
+        <div class="hud-form-izgara">
+          <div class="hud-alan">
+            <label for="dv-durum">DURUM</label>
+            <select id="dv-durum" name="durum">
+              <% sabitler.vakaDurumlari.forEach(function (d) { %>
+                <option value="<%= d %>" <%= d === vaka.durum ? 'selected' : '' %>><%= sz.DURUM_ADI[d] || d %></option>
+              <% }); %>
+            </select>
+          </div>
+          <div class="hud-alan">
+            <label for="dv-oncelik">ONCELIK</label>
+            <select id="dv-oncelik" name="oncelik">
+              <% sabitler.oncelikler.forEach(function (o) { %>
+                <option value="<%= o %>" <%= o === vaka.oncelik ? 'selected' : '' %>><%= o %></option>
+              <% }); %>
+            </select>
+          </div>
+          <div class="hud-alan">
+            <label for="dv-tasnif">TASNIF</label>
+            <select id="dv-tasnif" name="tasnif">
+              <% sabitler.tasnifler.forEach(function (t) { %>
+                <option value="<%= t %>" <%= t === vaka.tasnif ? 'selected' : '' %>><%= sz.TASNIF_ADI[t] %></option>
+              <% }); %>
+            </select>
+          </div>
+          <div class="hud-alan">
+            <label for="dv-sorumlu">SORUMLU</label>
+            <input type="text" id="dv-sorumlu" name="sorumlu" value="<%= vaka.sorumlu || '' %>">
+          </div>
+          <div class="hud-alan hud-alan--genis">
+            <label for="dv-aciklama">ACIKLAMA</label>
+            <textarea id="dv-aciklama" name="aciklama" rows="4"><%= vaka.aciklama || '' %></textarea>
+          </div>
+        </div>
+        <div class="hud-dugmeler">
+          <button type="submit" class="dugme dugme--kucuk"><span class="dugme-metin">KAYDET</span></button>
+        </div>
+      </form>
+    </section>
+  </div>
+</div>
+
+<%- include('../partials/kabuk-alt') %>
+<% const betikler = ['/js/arsiv.js']; %>
+<%- include('../partials/son', { betikler: betikler }) %>
+<%- const betikler = arsiv.js -%>
+<% include("partials/son") -%>

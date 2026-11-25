@@ -27,6 +27,9 @@ const { yazmaSiniri } = require('../middleware/rateLimit');
 const { yukleyici, yuklemeHatasiYakala } = require('../middleware/yukleme');
 const dogrula = require('../utils/validate');
 
+const cozumlemeService = require('../services/cozumlemeService');
+const zekaService = require('../services/zekaService');
+
 const yonlendirici = express.Router();
 
 const DURUM_MESAJLARI = {
@@ -276,6 +279,15 @@ yonlendirici.post(
       const sonuclar = [];
       for (const dosya of dosyalar) {
         const sonuc = await dosyaService.yukle({ klasorId, dosya, yoneticiId: req.yonetici.id });
+
+        // Yukleme basariliysa belgeyi hemen cozumle: metnini cikar,
+        // varliklarini bul, yerel arama dizinine ekle. Hata yuklemeyi
+        // engellemez; ayarlardan kapatilabilir.
+        if (sonuc && sonuc.tamam && sonuc.dosya) {
+          cozumlemeService.otomatikCozumle(sonuc.dosya.id, { yoneticiId: req.yonetici.id })
+            .catch(() => { /* cozumleme hatasi yuklemeyi engellemez */ });
+        }
+
         sonuclar.push(sonuc);
       }
 
@@ -422,6 +434,116 @@ yonlendirici.post('/depo/belge/:id/sil', onbellekYok, girisGerekli, yazmaSiniri,
 
     const geriYol = mevcut.klasor_id ? `/depo?klasor=${mevcut.klasor_id}` : '/depo';
     return basariliYanit(req, res, { geriYol, durumKodu: 'belge_silindi' });
+  } catch (hata) { next(hata); }
+});
+
+
+// ======================================================= BELGE COZUMLEME
+
+/** Dosyanin makine okumasini gosterir: metin, varliklar, ustveri, riskler. */
+yonlendirici.get('/depo/dosya/:id/cozumleme', onbellekYok, girisGerekli, async (req, res, next) => {
+  try {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id) || id <= 0) return res.redirect(303, '/depo');
+
+    const dosya = await dosyaService.getir(id);
+    if (!dosya) return res.redirect(303, '/depo?hata=Dosya+bulunamadi');
+
+    const erisim = await klasorService.erisimDenetle(dosya.klasor_id, req.session);
+    if (!erisim.tamam) return res.redirect(303, `/depo?hata=${encodeURIComponent(erisim.hata || 'Erisim yok')}`);
+
+    const [cozumleme, oneriler, benzerler] = await Promise.all([
+      cozumlemeService.getir(id),
+      cozumlemeService.varlikOnerileri(id).catch(() => []),
+      zekaService.benzerler('dosya', id, { limit: 6 }).catch(() => []),
+    ]);
+
+    res.render('depo/cozumleme', {
+      baslik: 'BELGE COZUMLEMESI',
+      rota: '/depo',
+      betikler: ['/js/depo.js'],
+      dosya, cozumleme, oneriler, benzerler,
+      riskAciklamalari: cozumlemeService.RISK_ACIKLAMALARI,
+      sozluk: require('../zeka/dogalDil'),
+    });
+  } catch (hata) { next(hata); }
+});
+
+/** Dosyayi (yeniden) cozumler. */
+yonlendirici.post('/depo/dosya/:id/coz', onbellekYok, girisGerekli, yazmaSiniri, csrfKoru, async (req, res, next) => {
+  try {
+    const id = Number(req.params.id);
+    const dosya = await dosyaService.getir(id);
+    if (!dosya) return res.redirect(303, '/depo?hata=Dosya+bulunamadi');
+
+    const erisim = await klasorService.erisimDenetle(dosya.klasor_id, req.session);
+    if (!erisim.tamam) return res.redirect(303, '/depo?hata=Erisim+yok');
+
+    const sonuc = await cozumlemeService.dosyaCozumle(id, {
+      yoneticiId: req.yonetici.id, yenile: true, ip: log.ipCikar(req),
+    });
+
+    const mesaj = sonuc.tamam
+      ? `Cozumlendi: ${sonuc.cozumleme.bicim}, ${sonuc.cozumleme.kelime_sayisi} kelime` +
+        (sonuc.cikarim ? `, ${sonuc.cikarim.ozet.toplam} varlik bulundu` : '')
+      : (sonuc.hata || 'Cozumleme basarisiz.');
+
+    res.redirect(303, `/depo/dosya/${id}/cozumleme?${sonuc.tamam ? 'bildirim' : 'hata'}=${encodeURIComponent(mesaj)}`);
+  } catch (hata) { next(hata); }
+});
+
+/** Bekleyen tum dosyalari topluca cozumler. */
+yonlendirici.post('/depo/cozumle-bekleyenler', onbellekYok, girisGerekli, yazmaSiniri, csrfKoru, async (req, res, next) => {
+  try {
+    const sayim = await cozumlemeService.bekleyenleriCozumle({
+      limit: 150, yoneticiId: req.yonetici.id,
+    });
+    res.redirect(303, `/depo?bildirim=${encodeURIComponent(
+      `${sayim.toplam} dosya islendi: ${sayim.tamam} tamam, ${sayim.kismi} kismi, ${sayim.basarisiz} basarisiz, ${sayim.varlik} varlik bulundu.`,
+    )}`);
+  } catch (hata) { next(hata); }
+});
+
+/** Cozumlemede bulunan varliklari arsive aktarir. */
+yonlendirici.post('/depo/dosya/:id/varlik-aktar', onbellekYok, girisGerekli, yazmaSiniri, csrfKoru, async (req, res, next) => {
+  try {
+    const id = Number(req.params.id);
+    const secimHam = req.body.secim;
+    const secimler = (Array.isArray(secimHam) ? secimHam : [secimHam])
+      .filter(Boolean)
+      .map((s) => {
+        const [tur, ...ad] = String(s).split('|');
+        return { tur, ad: ad.join('|') };
+      });
+
+    if (!secimler.length) {
+      return res.redirect(303, `/depo/dosya/${id}/cozumleme?hata=Hicbir+varlik+secilmedi`);
+    }
+
+    const sonuc = await cozumlemeService.onerileriKaydet(id, secimler, {
+      yoneticiId: req.yonetici.id,
+    });
+
+    res.redirect(303, `/depo/dosya/${id}/cozumleme?bildirim=${encodeURIComponent(
+      `${sonuc.olusturulan} varlik olusturuldu, ${sonuc.baglanan} baglanti kuruldu.` +
+      (sonuc.hatalar.length ? ` ${sonuc.hatalar.length} hata.` : ''),
+    )}`);
+  } catch (hata) { next(hata); }
+});
+
+/** Cozumlenen belgeden arsiv kaydi uretir. */
+yonlendirici.post('/depo/dosya/:id/kayit-uret', onbellekYok, girisGerekli, yazmaSiniri, csrfKoru, async (req, res, next) => {
+  try {
+    const id = Number(req.params.id);
+    const sonuc = await cozumlemeService.kayitUret(id, {
+      yoneticiId: req.yonetici.id,
+      vakaId: req.body.vaka_id ? Number(req.body.vaka_id) : null,
+      tasnif: req.body.tasnif || null,
+    });
+    if (!sonuc.tamam) {
+      return res.redirect(303, `/depo/dosya/${id}/cozumleme?hata=${encodeURIComponent(sonuc.hata)}`);
+    }
+    res.redirect(303, `/arsiv/kayit/${sonuc.kayit.id}?bildirim=${encodeURIComponent(`${sonuc.kayit.kod} belgeden uretildi.`)}`);
   } catch (hata) { next(hata); }
 });
 

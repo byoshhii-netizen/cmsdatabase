@@ -5,9 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#04070a">
   <meta name="robots" content="noindex, nofollow">
-  <meta name="description" content="CMS Veri Merkezi - kapali devre veri yonetim terminali">
+  <meta name="description" content="CMS Veri Merkezi - kapali devre istihbarat arsivi ve veri yonetim terminali">
   <title><%= baslik %> // <%= sistem.sistem_adi %></title>
   <link rel="stylesheet" href="/css/terminal.css">
+  <link rel="stylesheet" href="/css/hud.css">
   <link rel="icon" href="/ikon/amblem.svg" type="image/svg+xml">
 </head>
 <body
@@ -17,6 +18,8 @@
   data-ses="<%= sistem.ses_aktif ? '1' : '0' %>"
   data-matrix="<%= sistem.matrix_aktif ? '1' : '0' %>"
   data-gecis="<%= sistem.gecis_animasyonu ? '1' : '0' %>"
+  data-tema="<%= locals.tema || 'zumrut' %>"
+  data-uyari="<%= locals.uyariSayisi || 0 %>"
 >
   <canvas id="matrix-tuval" aria-hidden="true"></canvas>
   <div class="arka-katman" aria-hidden="true"></div>

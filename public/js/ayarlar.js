@@ -1,189 +1,286 @@
 'use strict';
-/* ==========================================================================
-   public/js/ayarlar.js
-   Ayarlar ekrani: sifre guc gostergesi, AJAX sifre degistirme,
-   API anahtari kaydetme/silme onayi.
-   ========================================================================== */
+/**
+ * public/js/ayarlar.js
+ * Ayarlar ekrani: sifre gucu olcumu, eslesme denetimi, ses motoru
+ * onizlemesi, dosya secimi geri bildirimi ve #zeka bolumunun bakim
+ * islerinde (dizin kurma, model egitimi) kullaniciyi bilgilendirme.
+ */
+(function () {
+  // ===================================================== 1. SIFRE GUCU
+  const yeni = document.getElementById('yeni_sifre');
+  const tekrar = document.getElementById('yeni_sifre_tekrar');
+  const gucCubuk = document.getElementById('guc-cubuk');
+  const gucEtiket = document.getElementById('guc-etiket');
+  const eslesmeNotu = document.getElementById('eslesme-notu');
 
-(function (kuresel) {
-  const belge = kuresel.document;
+  /**
+   * Sifre gucunu entropi yaklasimiyla olcer: alfabe buyuklugu x uzunluk.
+   * Yaygin kaliplar (tekrar, artan dizi, klavye sirasi, sozluk parcasi)
+   * dusurucu olarak uygulanir. 0-100 arasi puan dondurur.
+   */
+  function gucOlc(s) {
+    if (!s) return { puan: 0, ad: '—', notlar: [] };
 
-  function hazir(f) {
-    if (belge.readyState === 'loading') belge.addEventListener('DOMContentLoaded', f);
-    else f();
-  }
+    const notlar = [];
+    let alfabe = 0;
+    if (/[a-z]/.test(s)) alfabe += 26;
+    if (/[A-Z]/.test(s)) alfabe += 26;
+    if (/[0-9]/.test(s)) alfabe += 10;
+    if (/[^A-Za-z0-9]/.test(s)) alfabe += 32;
+    if (/[çğıöşüÇĞİÖŞÜ]/.test(s)) alfabe += 12;
 
-  /** Kaba istemci tarafi guc puani (sunucu tarafi ayrica dogrular). */
-  function gucPuani(s) {
-    if (!s) return 0;
-    let p = Math.min(s.length * 4, 40);
-    if (/[a-z]/.test(s)) p += 10;
-    if (/[A-Z]/.test(s)) p += 12;
-    if (/[0-9]/.test(s)) p += 12;
-    if (/[^a-zA-Z0-9]/.test(s)) p += 16;
-    if (new Set(s).size > 8) p += 10;
-    return Math.max(0, Math.min(100, p));
-  }
+    let entropi = s.length * (Math.log(Math.max(2, alfabe)) / Math.log(2));
 
-  hazir(() => {
-    /* ------------------------------------------- Sifre guc gostergesi */
-    const yeni = belge.getElementById('yeni_sifre');
-    const tekrar = belge.getElementById('yeni_sifre_tekrar');
-    const cubuk = belge.getElementById('guc-cubuk');
-    const etiket = belge.getElementById('guc-etiket');
-    const eslesme = belge.getElementById('eslesme-notu');
+    // Tekrar eden karakterler
+    const tekilOran = new Set(s.split('')).size / s.length;
+    if (tekilOran < 0.5) { entropi *= 0.65; notlar.push('cok tekrar eden karakter var'); }
 
-    function gucGuncelle() {
-      if (!yeni || !cubuk) return;
-      const p = gucPuani(yeni.value);
-      const dilimSayisi = cubuk.children.length || 5;
-      const dolu = Math.round((p / 100) * dilimSayisi);
-      const sinif = p < 40 ? 'dolu-zayif' : p < 70 ? 'dolu-orta' : 'dolu-guclu';
-
-      Array.prototype.forEach.call(cubuk.children, (d, i) => {
-        d.className = 'guc-dilim' + (i < dolu ? ' ' + sinif : '');
-      });
-
-      if (etiket) {
-        etiket.textContent = !yeni.value ? '—'
-          : p < 40 ? 'ZAYIF' : p < 70 ? 'ORTA' : 'GUCLU';
-        etiket.className = 'kucuk ' + (p < 40 ? 'kirmizi-metin' : p < 70 ? 'kehribar-metin' : 'zumrut');
+    // Artan/azalan diziler ve klavye siralari
+    const kaliplar = ['abcdefghijklmnopqrstuvwxyz', '0123456789', 'qwertyuiop', 'asdfghjkl', 'zxcvbnm'];
+    const kucuk = s.toLowerCase();
+    for (let i = 0; i < kaliplar.length; i += 1) {
+      for (let j = 0; j + 4 <= kaliplar[i].length; j += 1) {
+        const parca = kaliplar[i].slice(j, j + 4);
+        if (kucuk.indexOf(parca) >= 0 || kucuk.indexOf(parca.split('').reverse().join('')) >= 0) {
+          entropi *= 0.7;
+          notlar.push('tahmin edilebilir dizi (' + parca + ')');
+          i = kaliplar.length;
+          break;
+        }
       }
     }
 
-    function eslesmeGuncelle() {
-      if (!yeni || !tekrar || !eslesme) return;
-      if (!tekrar.value) { eslesme.textContent = ''; return; }
-      const ayni = yeni.value === tekrar.value;
-      eslesme.textContent = ayni ? '✓ Sifreler uyusuyor' : '✗ Sifreler uyusmuyor';
-      eslesme.className = 'kucuk ' + (ayni ? 'zumrut' : 'kirmizi-metin');
-    }
-
-    if (yeni) yeni.addEventListener('input', () => { gucGuncelle(); eslesmeGuncelle(); });
-    if (tekrar) tekrar.addEventListener('input', eslesmeGuncelle);
-
-    /* ------------------------------------------ AJAX sifre degistirme */
-    const sifreForm = belge.getElementById('sifre-form');
-    const sifreSonuc = belge.getElementById('sifre-sonuc');
-
-    function sonucYaz(oge, mesaj, tur) {
-      if (!oge) return;
-      oge.textContent = mesaj;
-      oge.className = 'uyari-kutu ' + (tur === 'hata' ? 'uyari-kutu--hata' : 'uyari-kutu--bilgi');
-      oge.classList.remove('gizli');
-    }
-
-    if (sifreForm) {
-      sifreForm.dataset.ajax = '1';
-      sifreForm.addEventListener('submit', async (olay) => {
-        if (!kuresel.fetch) return;
-        olay.preventDefault();
-
-        const dugme = sifreForm.querySelector('button[type="submit"]');
-        if (dugme) { dugme.dataset.mesgul = '1'; dugme.disabled = true; }
-
-        const govde = {
-          mevcut_sifre: sifreForm.elements.mevcut_sifre.value,
-          yeni_sifre: sifreForm.elements.yeni_sifre.value,
-          yeni_sifre_tekrar: sifreForm.elements.yeni_sifre_tekrar.value,
-        };
-
-        try {
-          const s = await kuresel.CMS.istek('/ayarlar/sifre', { method: 'POST', govde });
-          if (s.tamam && s.govde && s.govde.tamam) {
-            if (kuresel.Ses) kuresel.Ses.erisim();
-            sonucYaz(sifreSonuc, s.govde.mesaj || 'Sifre guncellendi.', 'tamam');
-            sifreForm.reset();
-            gucGuncelle();
-            eslesmeGuncelle();
-          } else {
-            if (kuresel.Ses) kuresel.Ses.ret();
-            sonucYaz(sifreSonuc, (s.govde && s.govde.hata) || 'Sifre degistirilemedi.', 'hata');
-          }
-        } catch (_) {
-          sonucYaz(sifreSonuc, 'Sunucuya ulasilamadi.', 'hata');
-        } finally {
-          if (dugme) { dugme.dataset.mesgul = '0'; dugme.disabled = false; }
-        }
-      });
-    }
-
-    // Not: form[data-onay] icin tarayici onay dialogu artik cekirdek.js
-    // icindeki onayFormlariBaglat() tarafindan genel olarak yonetiliyor.
-
-    gucGuncelle();
-
-    /* ------------------------------------- API anahtari aktif/pasif AJAX */
-    belge.querySelectorAll('form[data-ajax-anahtar-durum]').forEach((form) => {
-      form.addEventListener('submit', async (olay) => {
-        if (!kuresel.CMS) return;
-        olay.preventDefault();
-        const girdi = form.querySelector('input[name="aktif"]');
-        const aktif = girdi.value === 'true';
-        try {
-          const s = await kuresel.CMS.istek(form.action, { method: 'POST', govde: { aktif } });
-          if (s.tamam && s.govde && s.govde.tamam) {
-            if (kuresel.Ses) kuresel.Ses.onay();
-            kuresel.location.reload();
-          } else if (kuresel.Ses) {
-            kuresel.Ses.ret();
-          }
-        } catch (_) { if (kuresel.Ses) kuresel.Ses.ret(); }
-      });
+    // Sik kullanilan parcalar
+    ['sifre', 'password', '1234', 'admin', 'qwerty', 'cms', 'merkez', 'veri'].forEach(function (p) {
+      if (kucuk.indexOf(p) >= 0) { entropi *= 0.6; notlar.push('"' + p + '" cok yaygin bir parca'); }
     });
 
-    /* --------------------------------------------- CAMBAZ SES AYARLARI */
-    const sesTurSec = belge.getElementById('ses-tur');
-    const sesAdGirdi = belge.getElementById('ses-ad');
-    const sesHiz = belge.getElementById('ses-hiz');
-    const sesPerde = belge.getElementById('ses-perde');
-    const sesHizDeger = belge.getElementById('ses-hiz-deger');
-    const sesPerdeDeger = belge.getElementById('ses-perde-deger');
-    const sesAdIpucu = belge.getElementById('ses-ad-liste-ipucu');
-    const sesDinleDugme = belge.getElementById('ses-dinle-dugme');
+    if (s.length < 12) notlar.push('en az 12 karakter onerilir');
 
-    function tarayiciSesleriniListele() {
-      if (!kuresel.speechSynthesis || !sesAdIpucu) return;
-      const sesler = kuresel.speechSynthesis.getVoices().filter((s) => s.lang.toLowerCase().startsWith('tr') || true);
-      if (sesler.length === 0) return;
-      const adlar = sesler.slice(0, 8).map((s) => s.name).join(', ');
-      sesAdIpucu.textContent = 'Tarayicida bulunan bazi sesler: ' + adlar;
-    }
-    if (kuresel.speechSynthesis) {
-      tarayiciSesleriniListele();
-      kuresel.speechSynthesis.addEventListener('voiceschanged', tarayiciSesleriniListele);
-    }
+    // 0-100'e olcekle: 100 bit entropi tam puan sayilir
+    const puan = Math.max(0, Math.min(100, Math.round((entropi / 100) * 100)));
+    const ad = puan >= 80 ? 'COK GUCLU' : puan >= 60 ? 'GUCLU' : puan >= 40 ? 'ORTA' : puan >= 20 ? 'ZAYIF' : 'COK ZAYIF';
+    return { puan, ad, notlar, entropi: Math.round(entropi) };
+  }
 
-    if (sesHiz && sesHizDeger) sesHiz.addEventListener('input', () => { sesHizDeger.textContent = sesHiz.value; });
-    if (sesPerde && sesPerdeDeger) sesPerde.addEventListener('input', () => { sesPerdeDeger.textContent = sesPerde.value; });
+  function gucGuncelle() {
+    if (!yeni) return;
+    const olcum = gucOlc(yeni.value);
 
-    if (sesDinleDugme) {
-      sesDinleDugme.addEventListener('click', () => {
-        if (!kuresel.speechSynthesis) return;
-        const metin = 'Merhaba operator, ben Cambaz. Ses ayarlarin boyle duyulacak.';
-        const soylem = new kuresel.SpeechSynthesisUtterance(metin);
-        soylem.rate = Number((sesHiz && sesHiz.value) || 1);
-        soylem.pitch = Number((sesPerde && sesPerde.value) || 1);
-        if (sesAdGirdi && sesAdGirdi.value) {
-          const eslesen = kuresel.speechSynthesis.getVoices().find((s) => s.name === sesAdGirdi.value);
-          if (eslesen) soylem.voice = eslesen;
-        }
-        kuresel.speechSynthesis.cancel();
-        kuresel.speechSynthesis.speak(soylem);
-      });
+    if (gucCubuk) {
+      let dolgu = gucCubuk.querySelector('.guc-dolgu');
+      if (!dolgu) {
+        dolgu = document.createElement('span');
+        dolgu.className = 'guc-dolgu';
+        gucCubuk.textContent = '';
+        gucCubuk.appendChild(dolgu);
+      }
+      dolgu.style.width = olcum.puan + '%';
+      gucCubuk.setAttribute('data-seviye',
+        olcum.puan >= 60 ? 'iyi' : olcum.puan >= 40 ? 'orta' : 'zayif');
     }
 
-    /* ------------------------------------------- OZEL SES ORNEGI YUKLEME */
-    const sesOrnekGirdi = belge.getElementById('ses-ornek-girdi');
-    const sesOrnekAd = belge.getElementById('ses-ornek-ad');
-    const sesOrnekYukleDugme = belge.getElementById('ses-ornek-yukle-dugme');
-
-    if (sesOrnekGirdi) {
-      sesOrnekGirdi.addEventListener('change', () => {
-        const dosya = sesOrnekGirdi.files && sesOrnekGirdi.files[0];
-        if (sesOrnekAd) sesOrnekAd.textContent = dosya ? dosya.name : 'dosya secilmedi';
-        if (sesOrnekYukleDugme) sesOrnekYukleDugme.disabled = !dosya;
-      });
+    if (gucEtiket) {
+      gucEtiket.textContent = yeni.value
+        ? olcum.ad + ' · ~' + olcum.entropi + ' bit'
+          + (olcum.notlar.length ? ' · ' + olcum.notlar[0] : '')
+        : '—';
+      gucEtiket.className = 'kucuk ' + (olcum.puan >= 60 ? 'zumrut' : olcum.puan >= 40 ? 'kehribar-metin' : 'kirmizi-metin');
     }
+  }
+
+  function eslesmeGuncelle() {
+    if (!eslesmeNotu || !yeni || !tekrar) return;
+    if (!tekrar.value) { eslesmeNotu.textContent = ''; return; }
+    const esit = yeni.value === tekrar.value;
+    eslesmeNotu.textContent = esit ? '✓ sifreler esliyor' : '✕ sifreler eslesmiyor';
+    eslesmeNotu.className = 'kucuk ' + (esit ? 'zumrut' : 'kirmizi-metin');
+  }
+
+  if (yeni) {
+    yeni.addEventListener('input', function () { gucGuncelle(); eslesmeGuncelle(); });
+    gucGuncelle();
+  }
+  if (tekrar) tekrar.addEventListener('input', eslesmeGuncelle);
+
+  // ================================================== 2. SES AYARLARI
+  const sesTur = document.getElementById('ses-tur');
+  const sesAd = document.getElementById('ses-ad');
+  const sesHiz = document.getElementById('ses-hiz');
+  const sesPerde = document.getElementById('ses-perde');
+  const hizDeger = document.getElementById('ses-hiz-deger');
+  const perdeDeger = document.getElementById('ses-perde-deger');
+  const adIpucu = document.getElementById('ses-ad-liste-ipucu');
+  const dinleDugme = document.getElementById('ses-dinle-dugme');
+
+  const ONERILEN_ADLAR = {
+    openai: 'onyx · nova · alloy · echo · fable · shimmer',
+    elevenlabs: 'ElevenLabs panelindeki ses kimligi ya da adi',
+  };
+
+  function tarayiciSesleri() {
+    if (!window.speechSynthesis) return [];
+    return window.speechSynthesis.getVoices()
+      .filter(function (s) { return /^tr/i.test(s.lang); })
+      .map(function (s) { return s.name; });
+  }
+
+  function adIpucuGuncelle() {
+    if (!adIpucu || !sesTur) return;
+    if (sesTur.value === 'tarayici') {
+      const adlar = tarayiciSesleri();
+      adIpucu.textContent = adlar.length
+        ? 'Bu tarayicida bulunan Turkce sesler: ' + adlar.slice(0, 6).join(' · ')
+        : 'Bu tarayicida Turkce sistem sesi bulunamadi; bos birakirsan varsayilan ses kullanilir.';
+    } else {
+      adIpucu.textContent = ONERILEN_ADLAR[sesTur.value] || '';
+    }
+  }
+
+  if (sesTur) {
+    sesTur.addEventListener('change', adIpucuGuncelle);
+    adIpucuGuncelle();
+    if (window.speechSynthesis) {
+      window.speechSynthesis.addEventListener('voiceschanged', adIpucuGuncelle);
+    }
+  }
+
+  function kaydirmaBagla(girdi, hedef) {
+    if (!girdi || !hedef) return;
+    girdi.addEventListener('input', function () { hedef.textContent = girdi.value; });
+  }
+  kaydirmaBagla(sesHiz, hizDeger);
+  kaydirmaBagla(sesPerde, perdeDeger);
+
+  if (dinleDugme) {
+    dinleDugme.addEventListener('click', async function () {
+      const ornek = 'Cekirdek zeka hazir. Arsivde yirmi dort yeni kayit ve uc acik uyari var.';
+      const metinDugum = dinleDugme.querySelector('.dugme-metin');
+      const eski = metinDugum ? metinDugum.textContent : '';
+
+      function geriAl() { if (metinDugum) metinDugum.textContent = eski; dinleDugme.disabled = false; }
+
+      dinleDugme.disabled = true;
+      if (metinDugum) metinDugum.textContent = 'SESLENDIRILIYOR…';
+
+      // Sunucu tarafli motor secilmisse once onu dene
+      if (sesTur && sesTur.value !== 'tarayici') {
+        try {
+          const yanit = await fetch('/cambaz/ses', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-CSRF-Token': document.body.getAttribute('data-csrf') || '',
+            },
+            body: JSON.stringify({ metin: ornek }),
+          });
+          const tur = yanit.headers.get('Content-Type') || '';
+          if (yanit.ok && tur.indexOf('audio') >= 0) {
+            const veri = await yanit.blob();
+            const ses = new Audio(URL.createObjectURL(veri));
+            ses.addEventListener('ended', geriAl, { once: true });
+            ses.addEventListener('error', geriAl, { once: true });
+            await ses.play();
+            return;
+          }
+        } catch (hata) { /* tarayici motoruna dus */ }
+      }
+
+      // Tarayici motoru
+      if (!window.speechSynthesis) {
+        if (adIpucu) adIpucu.textContent = 'Bu tarayici konusma sentezini desteklemiyor.';
+        geriAl();
+        return;
+      }
+      const soyle = new SpeechSynthesisUtterance(ornek);
+      soyle.lang = 'tr-TR';
+      soyle.rate = Number(sesHiz ? sesHiz.value : 1) || 1;
+      soyle.pitch = Number(sesPerde ? sesPerde.value : 1) || 1;
+      if (sesAd && sesAd.value) {
+        const bulunan = window.speechSynthesis.getVoices()
+          .find(function (s) { return s.name === sesAd.value; });
+        if (bulunan) soyle.voice = bulunan;
+      }
+      soyle.addEventListener('end', geriAl);
+      soyle.addEventListener('error', geriAl);
+      window.speechSynthesis.cancel();
+      window.speechSynthesis.speak(soyle);
+    });
+  }
+
+  // ============================================ 3. SES ORNEGI DOSYA SECIMI
+  const ornekGirdi = document.getElementById('ses-ornek-girdi');
+  const ornekAd = document.getElementById('ses-ornek-ad');
+  const ornekDugme = document.getElementById('ses-ornek-yukle-dugme');
+
+  if (ornekGirdi) {
+    ornekGirdi.addEventListener('change', function () {
+      const dosya = ornekGirdi.files && ornekGirdi.files[0];
+      if (ornekAd) {
+        ornekAd.textContent = dosya
+          ? dosya.name + ' · ' + Math.round(dosya.size / 1024) + ' KB'
+          : 'dosya secilmedi';
+      }
+      if (ornekDugme) ornekDugme.disabled = !dosya;
+    });
+  }
+
+  // ======================================= 4. BAKIM ISLERI GERI BILDIRIMI
+  // Dizin kurma / model egitimi uzun surebilir: dugmeyi kilitle, durumu yaz.
+  document.querySelectorAll('form[action^="/ayarlar/zeka"]').forEach(function (form) {
+    form.addEventListener('submit', function () {
+      const dugme = form.querySelector('button[type="submit"]');
+      if (!dugme || dugme.disabled) return;
+      const metinDugum = dugme.querySelector('.dugme-metin');
+      dugme.disabled = true;
+      if (metinDugum) metinDugum.textContent = 'ISLENIYOR… BEKLE';
+      dugme.setAttribute('aria-busy', 'true');
+    });
   });
-})(window);
+
+  // #zeka bagina gelindiyse bolumu gorunur kil ve kisa sure vurgula
+  if (window.location.hash === '#zeka') {
+    const bolum = document.getElementById('zeka');
+    if (bolum) {
+      bolum.scrollIntoView({ block: 'start', behavior: 'smooth' });
+      bolum.classList.add('bolum-vurgulu');
+      setTimeout(function () { bolum.classList.remove('bolum-vurgulu'); }, 2200);
+    }
+  }
+})();
+  // ================================================ 3. SIFRE DEGISTIRME SONUCU
+  const sifreFormu = document.getElementById('sifre-form');
+  const sifreSonuc = document.getElementById('sifre-sonuc');
+
+  if (sifreFormu && sifreSonuc) {
+    sifreFormu.addEventListener('submit', async function (olay) {
+      olay.preventDefault();
+      const mevcutSifre = sifreFormu.querySelector('[name="mevcut_sifre"]');
+      const yeniSifre = sifreFormu.querySelector('[name="yeni_sifre"]');
+      const yeniTekrar = sifreFormu.querySelector('[name="yeni_sifre_tekrar"]');
+
+      const yanit = await fetch(sifreFormu.action, {
+        method: sifreFormu.method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          mevcut: mevcutSifre.value,
+          yeni: yeniSifre.value,
+          tekrar: yeniTekrar.value,
+        }),
+      });
+
+      const sonuc = await yanit.json();
+      if (sonuc.durum === 'basarili') {
+        sifreSonuc.textContent = 'Sifreniz degistirildi.';
+        sifreSonuc.className = 'bildirim zumrut';
+        mevcutSifre.value = '';
+        yeniSifre.value = '';
+        yeniTekrar.value = '';
+        gucGuncelle();
+        eslesmeGuncelle();
+      } else {
+        sifreSonuc.textContent = sonuc.hata || 'Sifre guncellenemedi, lutfen tekrar deneyin.';
+        sifreSonuc.className = 'bildirim kirmizi';
+      }
+    });
+  }

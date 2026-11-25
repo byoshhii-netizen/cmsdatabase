@@ -1,3 +1,49 @@
+<%
+  // --- Gezinti haritasi: moduller islevlerine gore gruplanir ---
+  const menuGruplari = [
+    { ad: 'OPERASYON', ogeler: [
+      { yol: '/merkez',          im: '▣', ad: 'Merkez' },
+      { yol: '/arsiv',           im: '◎', ad: 'Arşiv' },
+      { yol: '/analiz',          im: '◬', ad: 'Analiz' },
+    ] },
+    { ad: 'ARŞİV', ogeler: [
+      { yol: '/arsiv/varliklar', im: '◆', ad: 'Varlıklar' },
+      { yol: '/arsiv/kayitlar',  im: '≣', ad: 'Kayıtlar' },
+      { yol: '/arsiv/olaylar',   im: '◷', ad: 'Zaman çizgisi' },
+      { yol: '/arsiv/vakalar',   im: '▦', ad: 'Vakalar' },
+      { yol: '/arsiv/kaynaklar', im: '◉', ad: 'Kaynaklar' },
+      { yol: '/arsiv/izleme',    im: '⚑', ad: 'İzleme', sayac: locals.uyariSayisi || 0 },
+    ] },
+    { ad: 'VERİ', ogeler: [
+      { yol: '/depo',            im: '▤', ad: 'Depo' },
+      { yol: '/pano',            im: '◈', ad: 'Pano' },
+    ] },
+    { ad: 'ZEKÂ', ogeler: [
+      { yol: '/cambaz',          im: '◉', ad: 'Cambaz' },
+      { yol: '/analiz/graf',     im: '⬡', ad: 'Bağlantı grafiği' },
+      { yol: '/analiz/metin',    im: '✎', ad: 'Metin çözümleyici' },
+    ] },
+    { ad: 'SİSTEM', ogeler: [
+      { yol: '/loglar',          im: '≡', ad: 'Loglar' },
+      { yol: '/arsiv/denetim',   im: '⌸', ad: 'Denetim izi' },
+      { yol: '/ayarlar',         im: '⚙', ad: 'Ayarlar' },
+    ] },
+  ];
+
+  const aktifTasnif = locals.sayfaTasnifi || locals.varsayilanTasnif || 'hizmete_ozel';
+  const tasnifAdlari = {
+    acik: 'AÇIK', hizmete_ozel: 'HİZMETE ÖZEL', gizli: 'GİZLİ', cok_gizli: 'ÇOK GİZLİ',
+  };
+%>
+
+<% if (locals.tasnifBandi !== false) { %>
+  <div class="tasnif-bandi tasnif-bandi--<%= aktifTasnif %>" role="note">
+    <span class="tasnif-bandi-yan"><%= sistem.sistem_kodu %></span>
+    <span><%= tasnifAdlari[aktifTasnif] || 'HİZMETE ÖZEL' %></span>
+    <span class="tasnif-bandi-yan">YETKİSİZ ERİŞİM YASAK</span>
+  </div>
+<% } %>
+
 <div class="kabuk">
 
   <header class="ust-bar">
@@ -10,6 +56,11 @@
     </div>
 
     <div class="ust-sag">
+      <button type="button" class="ust-arama" id="komut-ac" data-komut-ac aria-label="Komut paletini aç">
+        <span aria-hidden="true">⌕</span>
+        <span>Ara / komut</span>
+        <kbd>Ctrl</kbd><kbd>K</kbd>
+      </button>
       <span class="saat mono-sayi" id="saat">--.--.---- --:--:--</span>
       <button type="button" class="ses-dugme" id="ses-dugme" aria-pressed="true" title="Ses efektleri">◉</button>
       <form method="post" action="/cikis" class="dugme-sirasi" data-gecis-yazi="BAGLANTI KAPATILIYOR">
@@ -24,33 +75,50 @@
   <div class="govde">
 
     <nav class="yan-menu" aria-label="Ana gezinti">
-      <div class="menu-baslik">MODULLER</div>
-      <ul class="menu-liste">
-        <% const menu = [
-             { yol: '/merkez',  im: '▣', ad: 'Merkez' },
-             { yol: '/depo',    im: '▤', ad: 'Depo' },
-             { yol: '/pano',    im: '◈', ad: 'Pano' },
-             { yol: '/cambaz',  im: '◉', ad: 'Cambaz' },
-             { yol: '/loglar',  im: '≡', ad: 'Loglar' },
-             { yol: '/ayarlar', im: '⚙', ad: 'Ayarlar' }
-           ]; %>
-        <% menu.forEach(function (o) { %>
-          <li>
-            <a class="menu-bag <%= rota === o.yol ? 'etkin' : '' %>" href="<%= o.yol %>"
-               data-gecis-yazi="<%= o.ad.toUpperCase() %> YUKLENIYOR">
-              <span class="menu-im" aria-hidden="true"><%= o.im %></span>
-              <span><%= o.ad %></span>
-            </a>
-          </li>
-        <% }); %>
-      </ul>
+      <% menuGruplari.forEach(function (grup) { %>
+        <div class="menu-bolum">
+          <div class="menu-baslik"><%= grup.ad %></div>
+          <ul class="menu-liste">
+            <% grup.ogeler.forEach(function (o) { %>
+              <li>
+                <a class="menu-bag <%= rota === o.yol ? 'etkin' : '' %>" href="<%= o.yol %>"
+                   data-gecis-yazi="<%= o.ad.toLocaleUpperCase('tr-TR') %> YUKLENIYOR">
+                  <span class="menu-im" aria-hidden="true"><%= o.im %></span>
+                  <span><%= o.ad %></span>
+                  <% if (o.sayac) { %>
+                    <span class="menu-sayac <%= o.sayac > 9 ? 'menu-sayac--tehlike' : '' %>"><%= o.sayac %></span>
+                  <% } %>
+                </a>
+              </li>
+            <% }); %>
+          </ul>
+        </div>
+      <% }); %>
 
       <div class="panel bosluk-ust">
         <div class="menu-baslik">OPERATOR</div>
         <div class="kucuk zumrut"><%= yonetici ? yonetici.gorunenAd : '—' %></div>
         <div class="kucuk sonuk"><%= yonetici ? '@' + yonetici.kullaniciAdi : '' %></div>
         <div class="lamba lamba--aktif bosluk-ust">BAGLANTI AKTIF</div>
+        <% if (locals.motorDurum || locals.tema) { %>
+          <div class="kucuk sonuk bosluk-ust">
+            ÇEKİRDEK ZEKÂ · <span class="zumrut"><%= (sistem.zeka_motor || 'dahili').toLocaleUpperCase('tr-TR') %></span>
+          </div>
+        <% } %>
       </div>
     </nav>
 
     <main class="icerik <%= locals.tamEkran ? 'icerik--tam' : '' %>">
+
+      <% if (locals.bildirim) { %>
+        <div class="bildirim-serit" role="status">
+          <span class="bildirim-serit-im" aria-hidden="true">✓</span>
+          <span><%= locals.bildirim %></span>
+        </div>
+      <% } %>
+      <% if (locals.hata) { %>
+        <div class="bildirim-serit bildirim-serit--hata" role="alert">
+          <span class="bildirim-serit-im" aria-hidden="true">!</span>
+          <span><%= locals.hata %></span>
+        </div>
+      <% } %>

@@ -1,0 +1,289 @@
+<%- include('../partials/bas') %>
+<%- include('../partials/kabuk-ust') %>
+
+<% const s = ozet.sayim || {}; const sz = sozluk; %>
+
+<section class="hud hud--vurgulu">
+  <div class="hud-serit">
+    <div class="hud-serit-sol">
+      <span class="hud-serit-im" aria-hidden="true">◎</span>
+      <div>
+        <p class="hud-ustbaslik">KAPALI DEVRE ARSIV</p>
+        <h1 class="hud-baslik">ISTIHBARAT ARSIVI</h1>
+      </div>
+    </div>
+    <div class="hud-serit-sag">
+      <a class="dugme dugme--kucuk" href="/arsiv/varliklar">VARLIKLAR</a>
+      <a class="dugme dugme--kucuk dugme--sonuk" href="/arsiv/kayitlar">KAYITLAR</a>
+    </div>
+  </div>
+
+  <p class="hud-altbaslik">
+    Varlıklar, ilişkiler, kayıtlar, olaylar ve vakalar tek bir kapalı devre arşivde tutulur.
+    Her kayıt <strong>Admiralty derecelendirmesi</strong> (kaynak güvenilirliği A–F, bilgi doğruluğu 1–6)
+    ve <strong>tasnif seviyesi</strong> taşır; her değişiklik denetim izine işlenir.
+  </p>
+
+  <div class="hud-izgara bosluk-ust">
+    <a class="hud-veri" href="/arsiv/varliklar">
+      <span class="hud-veri-etiket">VARLIK</span>
+      <span class="hud-veri-deger sayi"><%= sz.bicimliSayi(s.varlik || 0) %></span>
+      <span class="hud-veri-alt"><%= s.izlemede || 0 %> izlemede</span>
+    </a>
+    <a class="hud-veri" href="/arsiv/kayitlar">
+      <span class="hud-veri-etiket">KAYIT</span>
+      <span class="hud-veri-deger sayi"><%= sz.bicimliSayi(s.kayit || 0) %></span>
+      <span class="hud-veri-alt"><%= s.bekleyen || 0 %> bekliyor</span>
+    </a>
+    <a class="hud-veri" href="/arsiv/olaylar">
+      <span class="hud-veri-etiket">OLAY</span>
+      <span class="hud-veri-deger sayi"><%= sz.bicimliSayi(s.olay || 0) %></span>
+      <span class="hud-veri-alt">zaman çizgisinde</span>
+    </a>
+    <a class="hud-veri" href="/analiz/graf">
+      <span class="hud-veri-etiket">İLİŞKİ</span>
+      <span class="hud-veri-deger sayi"><%= sz.bicimliSayi(s.iliski || 0) %></span>
+      <span class="hud-veri-alt">bağlantı grafiğinde</span>
+    </a>
+    <a class="hud-veri" href="/arsiv/vakalar">
+      <span class="hud-veri-etiket">AÇIK VAKA</span>
+      <span class="hud-veri-deger sayi"><%= sz.bicimliSayi(s.acik_vaka || 0) %></span>
+      <span class="hud-veri-alt">operasyon dosyası</span>
+    </a>
+    <a class="hud-veri <%= (s.uyari || 0) ? 'hud-veri--tehlike' : '' %>" href="/arsiv/izleme">
+      <span class="hud-veri-etiket">UYARI</span>
+      <span class="hud-veri-deger sayi"><%= sz.bicimliSayi(s.uyari || 0) %></span>
+      <span class="hud-veri-alt">okunmamış</span>
+    </a>
+  </div>
+</section>
+
+<div class="hud-yan-yana bosluk-ust">
+  <div>
+    <!-- ============================================ HIZLI KAYIT GIRISI -->
+    <section class="hud">
+      <div class="hud-serit">
+        <div class="hud-serit-sol">
+          <span class="hud-serit-im" aria-hidden="true">＋</span>
+          <h2 class="hud-baslik hud-baslik--kucuk">HIZLI KAYIT</h2>
+        </div>
+      </div>
+
+      <form method="post" action="/arsiv/kayit" class="hud-form">
+        <%- csrfAlani() %>
+        <div class="hud-alan">
+          <label for="hk-baslik">BASLIK</label>
+          <input type="text" id="hk-baslik" name="baslik" required maxlength="300"
+                 placeholder="Örn. Mersin limanında şüpheli konteyner hareketi">
+        </div>
+
+        <div class="hud-alan">
+          <label for="hk-govde">GOVDE</label>
+          <textarea id="hk-govde" name="govde" rows="5"
+                    placeholder="Ham istihbaratı olduğu gibi yaz. Motor metni okuyup özetler, varlıkları çıkarır."></textarea>
+          <span class="hud-alan-ipucu">
+            Kaydı oluşturduktan sonra <strong>“Varlıkları çıkar”</strong> ile kişi, kurum, telefon,
+            IBAN, plaka ve konumlar otomatik ayıklanıp arşive bağlanabilir.
+          </span>
+        </div>
+
+        <div class="hud-form-izgara">
+          <div class="hud-alan">
+            <label for="hk-tur">TUR</label>
+            <select id="hk-tur" name="tur">
+              <% sabitler.kayitTurleri.forEach(function (t) { %>
+                <option value="<%= t %>" <%= t === 'rapor' ? 'selected' : '' %>><%= sz.KAYIT_TUR_ADI[t] || t %></option>
+              <% }); %>
+            </select>
+          </div>
+          <div class="hud-alan">
+            <label for="hk-tasnif">TASNIF</label>
+            <select id="hk-tasnif" name="tasnif">
+              <% sabitler.tasnifler.forEach(function (t) { %>
+                <option value="<%= t %>" <%= t === (locals.varsayilanTasnif || 'hizmete_ozel') ? 'selected' : '' %>><%= sz.TASNIF_ADI[t] %></option>
+              <% }); %>
+            </select>
+          </div>
+          <div class="hud-alan">
+            <label for="hk-kaynak">KAYNAK</label>
+            <select id="hk-kaynak" name="kaynak_id">
+              <option value="">— seçilmedi —</option>
+              <% kaynaklar.forEach(function (k) { %>
+                <option value="<%= k.id %>"><%= k.ad %> (<%= k.guvenilirlik %>)</option>
+              <% }); %>
+            </select>
+          </div>
+          <div class="hud-alan">
+            <label for="hk-guven">KAYNAK DERECESI</label>
+            <select id="hk-guven" name="guvenilirlik">
+              <% sabitler.guvenilirlikler.forEach(function (g) { %>
+                <option value="<%= g %>" <%= g === 'C' ? 'selected' : '' %>><%= g %> — <%= sz.GUVENILIRLIK_ADI[g] %></option>
+              <% }); %>
+            </select>
+          </div>
+          <div class="hud-alan">
+            <label for="hk-dogruluk">DOGRULUK</label>
+            <select id="hk-dogruluk" name="dogruluk">
+              <% [1,2,3,4,5,6].forEach(function (d) { %>
+                <option value="<%= d %>" <%= d === 3 ? 'selected' : '' %>><%= d %> — <%= sz.DOGRULUK_ADI[d] %></option>
+              <% }); %>
+            </select>
+          </div>
+          <div class="hud-alan">
+            <label for="hk-vaka">VAKA</label>
+            <select id="hk-vaka" name="vaka_id">
+              <option value="">— seçilmedi —</option>
+              <% vakalar.forEach(function (v) { %>
+                <option value="<%= v.id %>"><%= v.kod %> <%= v.ad %></option>
+              <% }); %>
+            </select>
+          </div>
+        </div>
+
+        <div class="hud-dugmeler">
+          <button type="submit" class="dugme"><span class="dugme-metin">KAYDI OLUSTUR</span></button>
+          <a class="cip" href="/analiz/metin">METIN COZUMLEYICIYE GIT →</a>
+        </div>
+      </form>
+    </section>
+
+    <!-- =============================================== SON KAYITLAR -->
+    <section class="hud bosluk-ust">
+      <div class="hud-serit">
+        <div class="hud-serit-sol">
+          <span class="hud-serit-im" aria-hidden="true">≣</span>
+          <h2 class="hud-baslik hud-baslik--kucuk">SON KAYITLAR</h2>
+        </div>
+        <div class="hud-serit-sag"><a class="cip" href="/arsiv/kayitlar">TUMU →</a></div>
+      </div>
+
+      <% if (ozet.sonKayitlar.length) { %>
+        <div class="hud-tablo-sarmal">
+          <table class="hud-tablo">
+            <thead>
+              <tr><th class="daralt">KOD</th><th>BASLIK</th><th class="daralt">DERECE</th><th class="daralt">DURUM</th><th class="daralt">ZAMAN</th></tr>
+            </thead>
+            <tbody>
+              <% ozet.sonKayitlar.forEach(function (k) { %>
+                <tr>
+                  <td class="daralt"><span class="kod"><%= k.kod %></span></td>
+                  <td><a href="/arsiv/kayit/<%= k.id %>"><%= k.baslik %></a></td>
+                  <td class="daralt">
+                    <span class="derece derece--<%= String(k.guvenilirlik).toLowerCase() %>"><%= k.guvenilirlik %></span>
+                  </td>
+                  <td class="daralt">
+                    <span class="durum-nokta durum-nokta--<%= k.durum %>" aria-hidden="true"></span>
+                    <%= sz.DURUM_ADI[k.durum] || k.durum %>
+                  </td>
+                  <td class="daralt kucuk sonuk"><%= sz.gorece(k.zaman) %></td>
+                </tr>
+              <% }); %>
+            </tbody>
+          </table>
+        </div>
+      <% } else { %>
+        <div class="bos-durum">
+          <span class="bos-durum-im" aria-hidden="true">≣</span>
+          <p>Arşivde kayıt yok. Yukarıdaki hızlı kayıt formuyla ilk girişi yapabilir
+             ya da Depo'ya bir belge yükleyip çözümlenmesini bekleyebilirsin.</p>
+        </div>
+      <% } %>
+    </section>
+  </div>
+
+  <div>
+    <!-- ================================================= MOTOR DURUMU -->
+    <section class="hud">
+      <div class="hud-serit">
+        <div class="hud-serit-sol">
+          <span class="hud-serit-im" aria-hidden="true">◉</span>
+          <h2 class="hud-baslik hud-baslik--kucuk">CEKIRDEK ZEKA</h2>
+        </div>
+        <div class="hud-serit-sag"><a class="cip" href="/cambaz">SOR →</a></div>
+      </div>
+
+      <% if (motorDurum) { %>
+        <dl class="ozellik-listesi">
+          <dt>MOTOR</dt><dd><%= String(motorDurum.motor).toLocaleUpperCase('tr-TR') %> (API'siz)</dd>
+          <dt>DIZIN</dt><dd><%= sz.bicimliSayi(motorDurum.dizin.parca || 0) %> parça / <%= sz.bicimliSayi(motorDurum.dizin.kaynak || 0) %> kaynak</dd>
+          <dt>TERIM</dt><dd><%= sz.bicimliSayi(motorDurum.dizin.tekil || 0) %> tekil</dd>
+          <dt>SORGU</dt><dd><%= sz.bicimliSayi(motorDurum.sorgu.toplam || 0) %> (ort. <%= motorDurum.sorgu.ort_sure || 0 %> ms)</dd>
+          <dt>BELGE</dt><dd><%= cozDurum ? cozDurum.tamam : 0 %> çözümlendi, <%= cozDurum ? cozDurum.bekleyen : 0 %> bekliyor</dd>
+        </dl>
+
+        <h3 class="hud-ustbaslik bosluk-ust">YETENEKLER</h3>
+        <ul class="baglanti-listesi">
+          <% motorDurum.yetenekler.forEach(function (y) { %>
+            <li class="baglanti-oge">
+              <span class="durum-nokta durum-nokta--aktif" aria-hidden="true"></span>
+              <span class="baglanti-ad"><%= y.ad %><span class="satir-alt"><%= y.detay %></span></span>
+            </li>
+          <% }); %>
+        </ul>
+      <% } else { %>
+        <p class="hud-altbaslik">Motor durumu okunamadı.</p>
+      <% } %>
+    </section>
+
+    <!-- ===================================================== UYARILAR -->
+    <section class="hud bosluk-ust <%= uyarilar.some(function (u) { return u.seviye === 'kritik'; }) ? 'hud--tehlike' : '' %>">
+      <div class="hud-serit">
+        <div class="hud-serit-sol">
+          <span class="hud-serit-im" aria-hidden="true">⚑</span>
+          <h2 class="hud-baslik hud-baslik--kucuk">UYARILAR</h2>
+        </div>
+        <div class="hud-serit-sag"><a class="cip" href="/arsiv/izleme">YONET →</a></div>
+      </div>
+
+      <% if (uyarilar.length) { %>
+        <div class="kaynak-listesi">
+          <% uyarilar.forEach(function (u) { %>
+            <div class="uyari-kart uyari-kart--<%= u.seviye %>">
+              <div class="uyari-kart-govde">
+                <div class="uyari-kart-baslik"><%= u.baslik %></div>
+                <div class="uyari-kart-mesaj"><%= sz.gorece(u.olusturuldu_at) %></div>
+              </div>
+            </div>
+          <% }); %>
+        </div>
+      <% } else { %>
+        <p class="hud-altbaslik">Okunmamış uyarı yok. İzleme kuralı ekleyerek belirli
+          sözcük, varlık ya da desenler arşive girdiğinde haber alabilirsin.</p>
+      <% } %>
+    </section>
+
+    <!-- ======================================================= KAYNAKLAR -->
+    <section class="hud bosluk-ust">
+      <div class="hud-serit">
+        <div class="hud-serit-sol">
+          <span class="hud-serit-im" aria-hidden="true">◉</span>
+          <h2 class="hud-baslik hud-baslik--kucuk">KAYNAKLAR</h2>
+        </div>
+        <div class="hud-serit-sag"><a class="cip" href="/arsiv/kaynaklar">TUMU →</a></div>
+      </div>
+
+      <% if (kaynaklar.length) { %>
+        <ul class="baglanti-listesi">
+          <% kaynaklar.forEach(function (k) { %>
+            <li class="baglanti-oge">
+              <span class="derece derece--<%= String(k.guvenilirlik).toLowerCase() %>"><%= k.guvenilirlik %></span>
+              <span class="baglanti-ad">
+                <%= k.ad %>
+                <span class="satir-alt"><%= k.tur.replace('_', ' ') %> · <%= k.kayit_sayisi %> kayıt</span>
+              </span>
+              <% if (!k.aktif) { %><span class="cip cip--sonuk">PASIF</span><% } %>
+            </li>
+          <% }); %>
+        </ul>
+      <% } else { %>
+        <p class="hud-altbaslik">Kaynak tanımlanmamış.</p>
+      <% } %>
+    </section>
+  </div>
+</div>
+
+<%- include('../partials/kabuk-alt') %>
+<% const betikler = ['/js/arsiv.js']; %>
+<%- include('../partials/son', { betikler: betikler }) %>
+<%- const betikler = arsiv.js -%>
+<% include("partials/son") -%>

@@ -1,0 +1,86 @@
+<%- include('../partials/bas') %>
+<%- include('../partials/kabuk-ust') %>
+
+<% const sz = sozluk; const q = sorgu || {}; %>
+
+<section class="hud">
+  <div class="hud-serit">
+    <div class="hud-serit-sol">
+      <span class="hud-serit-im" aria-hidden="true">⌸</span>
+      <div>
+        <p class="hud-ustbaslik"><%= kayitlar.length %> SON KAYIT</p>
+        <h1 class="hud-baslik">DENETIM IZI</h1>
+      </div>
+    </div>
+  </div>
+
+  <p class="hud-altbaslik">
+    Arşivdeki her oluşturma, güncelleme, silme, görüntüleme, indirme ve tasnif değişimi
+    buraya yazılır (chain of custody). Silinen kayıtların izi de kalır: bir kaydın
+    kim tarafından, ne zaman ve hangi değerle değiştirildiği geri izlenebilir.
+  </p>
+
+  <form method="get" action="/arsiv/denetim" class="filtre-cubugu">
+    <div class="hud-alan">
+      <label for="f-tur">OGE TURU</label>
+      <select id="f-tur" name="tur">
+        <option value="">tümü</option>
+        <% ['varlik','kayit','olay','vaka','kaynak','iliski','dosya'].forEach(function (t) { %>
+          <option value="<%= t %>" <%= q.tur === t ? 'selected' : '' %>><%= t %></option>
+        <% }); %>
+      </select>
+    </div>
+    <div class="hud-alan">
+      <label for="f-oge">OGE KIMLIGI</label>
+      <input type="number" id="f-oge" name="oge" value="<%= q.oge || '' %>" min="1">
+    </div>
+    <div class="hud-alan">
+      <label class="gorsel-gizli" for="f-gonder">FILTRELE</label>
+      <button type="submit" id="f-gonder" class="dugme dugme--kucuk"><span class="dugme-metin">FILTRELE</span></button>
+    </div>
+  </form>
+
+  <% if (kayitlar.length) { %>
+    <div class="hud-tablo-sarmal">
+      <table class="hud-tablo">
+        <thead>
+          <tr><th class="daralt">ZAMAN</th><th class="daralt">OGE</th><th class="daralt">EYLEM</th>
+              <th class="daralt">OPERATOR</th><th class="daralt">IP</th><th>DEGISIKLIK</th></tr>
+        </thead>
+        <tbody>
+          <% kayitlar.forEach(function (d) { %>
+            <tr>
+              <td class="daralt kucuk sonuk"><%= sz.tarihSozcuk(d.olusturuldu_at, { gunAdi: false, saat: true }) %></td>
+              <td class="daralt kucuk">
+                <% if (d.oge_id) { %>
+                  <a href="<%= d.oge_tur === 'kayit' ? '/arsiv/kayit/' + d.oge_id : d.oge_tur === 'varlik' ? '/arsiv/varlik/' + d.oge_id : d.oge_tur === 'olay' ? '/arsiv/olay/' + d.oge_id : d.oge_tur === 'vaka' ? '/arsiv/vaka/' + d.oge_id : '#' %>">
+                    <%= d.oge_tur %>#<%= d.oge_id %>
+                  </a>
+                <% } else { %><%= d.oge_tur %><% } %>
+              </td>
+              <td class="daralt"><span class="cip cip--<%= d.eylem === 'silme' ? 'tehlike' : d.eylem === 'tasnif_degisimi' ? 'uyari' : 'sonuk' %>"><%= d.eylem %></span></td>
+              <td class="daralt kucuk"><%= d.gorunen_ad || d.kullanici_adi || '—' %></td>
+              <td class="daralt kucuk sonuk"><%= d.ip || '—' %></td>
+              <td class="kucuk sonuk">
+                <% if (d.onceki) { %><span class="cip cip--sonuk">önce</span> <%= JSON.stringify(d.onceki).slice(0, 90) %><% } %>
+                <% if (d.sonraki) { %><span class="cip cip--vurgu">sonra</span> <%= JSON.stringify(d.sonraki).slice(0, 90) %><% } %>
+                <% if (!d.onceki && !d.sonraki) { %><%= d.aciklama || '—' %><% } %>
+              </td>
+            </tr>
+          <% }); %>
+        </tbody>
+      </table>
+    </div>
+  <% } else { %>
+    <div class="bos-durum">
+      <span class="bos-durum-im" aria-hidden="true">⌸</span>
+      <p>Denetim kaydı yok.</p>
+    </div>
+  <% } %>
+</section>
+
+<%- include('../partials/kabuk-alt') %>
+<% const betikler = ['/js/arsiv.js']; %>
+<%- include('../partials/son', { betikler: betikler }) %>
+<%- const betikler = arsiv.js -%>
+<% include("partials/son") -%>

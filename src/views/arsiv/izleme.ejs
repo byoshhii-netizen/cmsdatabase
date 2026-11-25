@@ -1,0 +1,181 @@
+<%- include('../partials/bas') %>
+<%- include('../partials/kabuk-ust') %>
+
+<% const sz = sozluk; const q = sorgu || {}; %>
+
+<section class="hud">
+  <div class="hud-serit">
+    <div class="hud-serit-sol">
+      <span class="hud-serit-im" aria-hidden="true">⚑</span>
+      <div>
+        <p class="hud-ustbaslik"><%= kurallar.length %> KURAL · <%= uyarilar.filter(function (u) { return !u.okundu; }).length %> OKUNMAMIS</p>
+        <h1 class="hud-baslik">IZLEME VE UYARILAR</h1>
+      </div>
+    </div>
+    <div class="hud-serit-sag">
+      <form method="post" action="/arsiv/uyari/tumu-okundu" class="dugme-sirasi">
+        <%- csrfAlani() %>
+        <input type="hidden" name="geri" value="/arsiv/izleme">
+        <button type="submit" class="dugme dugme--kucuk dugme--sonuk"><span class="dugme-metin">TUMUNU OKUNDU YAP</span></button>
+      </form>
+    </div>
+  </div>
+
+  <p class="hud-altbaslik">
+    İzleme kuralı, arşive yeni bir kayıt/olay/belge girdiğinde otomatik çalışır.
+    <strong>Anahtar</strong> kuralı sözcükleri gövdeleyerek arar (yani “silah” kuralı
+    “silahların” metnini de yakalar), <strong>varlık</strong> kuralı belirli bir varlığın
+    anılmasını, <strong>desen</strong> kuralı ise düzenli ifade eşleşmesini izler.
+  </p>
+</section>
+
+<div class="hud-yan-yana bosluk-ust">
+  <div>
+    <section class="hud">
+      <div class="hud-serit">
+        <div class="hud-serit-sol">
+          <span class="hud-serit-im" aria-hidden="true">⚑</span>
+          <h2 class="hud-baslik hud-baslik--kucuk">UYARILAR</h2>
+        </div>
+        <div class="hud-serit-sag">
+          <a class="cip <%= q.okundu === undefined ? 'cip--vurgu' : '' %>" href="/arsiv/izleme">TUMU</a>
+          <a class="cip <%= q.okundu === '0' ? 'cip--vurgu' : '' %>" href="/arsiv/izleme?okundu=0">OKUNMAMIS</a>
+        </div>
+      </div>
+
+      <% if (uyarilar.length) { %>
+        <div class="kaynak-listesi">
+          <% uyarilar.forEach(function (u) { %>
+            <div class="uyari-kart uyari-kart--<%= u.seviye %>">
+              <span aria-hidden="true"><%= u.seviye === 'kritik' ? '!' : u.seviye === 'uyari' ? '△' : 'i' %></span>
+              <div class="uyari-kart-govde">
+                <div class="uyari-kart-baslik"><%= u.baslik %></div>
+                <% if (u.mesaj) { %><div class="uyari-kart-mesaj"><%= u.mesaj %></div><% } %>
+                <div class="uyari-kart-mesaj">
+                  <%= u.kural_ad ? u.kural_ad + ' · ' : '' %>
+                  <%= sz.tarihSozcuk(u.olusturuldu_at, { gunAdi: false, saat: true }) %>
+                  <% if (u.oge_tur && u.oge_id) { %>
+                    · <a href="<%= u.oge_tur === 'kayit' ? '/arsiv/kayit/' + u.oge_id : u.oge_tur === 'olay' ? '/arsiv/olay/' + u.oge_id : u.oge_tur === 'varlik' ? '/arsiv/varlik/' + u.oge_id : '/depo/dosya/' + u.oge_id + '/cozumleme' %>">kaynağa git →</a>
+                  <% } %>
+                </div>
+              </div>
+              <% if (!u.okundu) { %>
+                <form method="post" action="/arsiv/uyari/<%= u.id %>/okundu" class="dugme-sirasi">
+                  <%- csrfAlani() %>
+                  <input type="hidden" name="geri" value="/arsiv/izleme">
+                  <button type="submit" class="dugme dugme--kucuk dugme--sonuk"><span class="dugme-metin">✓</span></button>
+                </form>
+              <% } %>
+            </div>
+          <% }); %>
+        </div>
+      <% } else { %>
+        <div class="bos-durum">
+          <span class="bos-durum-im" aria-hidden="true">⚑</span>
+          <p>Uyarı yok.</p>
+        </div>
+      <% } %>
+    </section>
+  </div>
+
+  <div>
+    <section class="hud">
+      <div class="hud-serit">
+        <div class="hud-serit-sol">
+          <span class="hud-serit-im" aria-hidden="true">⌗</span>
+          <h2 class="hud-baslik hud-baslik--kucuk">KURALLAR</h2>
+        </div>
+      </div>
+
+      <% if (kurallar.length) { %>
+        <ul class="baglanti-listesi">
+          <% kurallar.forEach(function (k) { %>
+            <li class="baglanti-oge">
+              <span class="durum-nokta durum-nokta--<%= k.aktif ? 'aktif' : 'pasif' %>" aria-hidden="true"></span>
+              <span class="baglanti-ad">
+                <%= k.ad %>
+                <span class="satir-alt">
+                  <%= k.tur %><%= k.desen ? ': ' + k.desen.slice(0, 50) : '' %><%= k.varlik_ad ? ': ' + k.varlik_ad : '' %>
+                  · <%= k.kapsam.join('/') %> · <%= k.tetik_sayisi %> tetik
+                  <%= k.son_tetik_at ? ' · son ' + sz.gorece(k.son_tetik_at) : '' %>
+                </span>
+              </span>
+              <span class="cip cip--<%= k.seviye === 'kritik' ? 'tehlike' : k.seviye === 'uyari' ? 'uyari' : 'sonuk' %>"><%= k.seviye %></span>
+              <form method="post" action="/arsiv/izleme/<%= k.id %>/tara" class="dugme-sirasi">
+                <%- csrfAlani() %>
+                <button type="submit" class="dugme dugme--kucuk dugme--sonuk" title="Kuralı geçmişe uygula">
+                  <span class="dugme-metin">⟲</span>
+                </button>
+              </form>
+              <form method="post" action="/arsiv/izleme/<%= k.id %>/sil" class="dugme-sirasi"
+                    data-onay="Kuralı silmek istediğine emin misin?">
+                <%- csrfAlani() %>
+                <button type="submit" class="dugme dugme--kucuk dugme--sonuk"><span class="dugme-metin">×</span></button>
+              </form>
+            </li>
+          <% }); %>
+        </ul>
+      <% } else { %>
+        <p class="hud-altbaslik">Kural tanımlanmamış.</p>
+      <% } %>
+
+      <h3 class="hud-ustbaslik bosluk-ust">YENI KURAL</h3>
+      <form method="post" action="/arsiv/izleme" class="hud-form">
+        <%- csrfAlani() %>
+        <div class="hud-alan">
+          <label for="ik-ad">KURAL ADI</label>
+          <input type="text" id="ik-ad" name="ad" required maxlength="120">
+        </div>
+        <div class="hud-alan">
+          <label for="ik-tur">TUR</label>
+          <select id="ik-tur" name="tur">
+            <option value="anahtar">anahtar sözcük</option>
+            <option value="varlik">varlık</option>
+            <option value="desen">düzenli ifade</option>
+          </select>
+        </div>
+        <div class="hud-alan">
+          <label for="ik-desen">DESEN / SOZCUKLER</label>
+          <input type="text" id="ik-desen" name="desen" placeholder="silah, mühimmat, patlayıcı">
+          <span class="hud-alan-ipucu">
+            Virgülle ayır. Çok sözcüklü ifade için alt çizgi kullan: <code>kara_para</code>
+          </span>
+        </div>
+        <div class="hud-alan">
+          <label for="ik-varlik">VARLIK (varlık kuralı için)</label>
+          <select id="ik-varlik" name="varlik_id">
+            <option value="">— seçilmedi —</option>
+            <% varliklar.forEach(function (v) { %>
+              <option value="<%= v.id %>"><%= v.ad %> (<%= sz.VARLIK_TUR_ADI[v.tur] || v.tur %>)</option>
+            <% }); %>
+          </select>
+        </div>
+        <div class="hud-alan">
+          <label for="ik-seviye">SEVIYE</label>
+          <select id="ik-seviye" name="seviye">
+            <% seviyeler.forEach(function (s) { %>
+              <option value="<%= s %>" <%= s === 'uyari' ? 'selected' : '' %>><%= s %></option>
+            <% }); %>
+          </select>
+        </div>
+        <div class="hud-alan">
+          <label for="ik-kapsam">KAPSAM</label>
+          <select id="ik-kapsam" name="kapsam" multiple size="4">
+            <% kapsamlar.forEach(function (k) { %>
+              <option value="<%= k %>" <%= ['kayit','belge','olay'].includes(k) ? 'selected' : '' %>><%= k %></option>
+            <% }); %>
+          </select>
+        </div>
+        <div class="hud-dugmeler">
+          <button type="submit" class="dugme dugme--kucuk"><span class="dugme-metin">KURAL EKLE</span></button>
+        </div>
+      </form>
+    </section>
+  </div>
+</div>
+
+<%- include('../partials/kabuk-alt') %>
+<% const betikler = ['/js/arsiv.js']; %>
+<%- include('../partials/son', { betikler: betikler }) %>
+<%- const betikler = arsiv.js -%>
+<% include("partials/son") -%>

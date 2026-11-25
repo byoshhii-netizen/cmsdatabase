@@ -225,6 +225,36 @@ function havaSehirCikar(metin) {
   return null;
 }
 
+/**
+ * CEKIRDEK ZEKA ile yanitlar — API'siz, arsiv tabanli.
+ *
+ * Bu, Cambaz'in asil beynidir: soruyu cozumler, arsivden kanit toplar ve
+ * kaynak gostererek cevap yazar. Bir dis servise gerek duymaz.
+ */
+async function cekirdekYanitla(metinHam, { yoneticiId = null } = {}) {
+  const cikarim = require('../zeka/cikarim');
+  const sonuc = await cikarim.sor(metinHam, { yoneticiId });
+
+  // Bulgular kaynak listesi olarak cevabin altina eklenir: operator
+  // her cumlenin nereden geldigini gorebilsin.
+  let metin = sonuc.cevap;
+  if (sonuc.bulgular && sonuc.bulgular.length) {
+    const kaynaklar = sonuc.bulgular.slice(0, 6)
+      .map((b) => `- [${b.etiket}] ${b.baslik}${b.alinti ? ` — ${String(b.alinti).slice(0, 160)}` : ''}`)
+      .join('\n');
+    metin += `\n\n**Kaynaklar**\n${kaynaklar}`;
+  }
+
+  return {
+    metin,
+    niyet: sonuc.niyet,
+    bulguSayisi: (sonuc.bulgular || []).length,
+    veri: sonuc.veri,
+    eylemler: sonuc.eylemler,
+    sureMs: sonuc.sureMs,
+  };
+}
+
 async function cevrimdisiYanitla(metinHam) {
   const metin = metinHam.trim();
 
@@ -280,13 +310,28 @@ async function mesajGonder({ oturumId, metin, sesli = false, yoneticiId = null }
 
   const saglayici = oturum.saglayici || await ayarService.ayarAl('cambaz_saglayici', 'anthropic');
   const model = oturum.model || await ayarService.ayarAl('cambaz_model', null);
-  const apiKey = await ayarService.apiAnahtarCoz(saglayici);
+  const motor = await ayarService.ayarAl('zeka_motor', 'dahili');
+  const apiKey = motor === 'dahili' ? null : await ayarService.apiAnahtarCoz(saglayici);
 
   const basla = Date.now();
   let cevapMetni; let model_ = null; let girdiToken = null; let ciktiToken = null; let hataMetni = null;
   let cevrimici = false; let hafizaEklendi = false;
+  let cekirdek = null;
 
-  if (apiKey) {
+  // VARSAYILAN MOTOR: dahili cekirdek zeka. Bir API anahtari olsa bile,
+  // ayar 'dahili' ise dis servise cikilmaz. 'karma' modunda once arsiv
+  // taranir; arsivden dayanak cikmazsa saglayiciya basvurulur.
+  if (motor === 'dahili' || motor === 'karma') {
+    cekirdek = await cekirdekYanitla(temizMetin, { yoneticiId });
+  }
+
+  const karmaDevam = motor === 'karma' && apiKey && cekirdek &&
+    cekirdek.niyet === 'arama' && cekirdek.bulguSayisi === 0;
+
+  if (motor === 'dahili' || (motor === 'karma' && !karmaDevam)) {
+    cevapMetni = cekirdek.metin;
+    model_ = 'cekirdek-zeka';
+  } else if (apiKey) {
     cevrimici = true;
     const sonuc = await cevrimiciYanitla({ saglayici, apiKey, model, oturumId });
     if (sonuc.tamam) {
@@ -304,21 +349,33 @@ async function mesajGonder({ oturumId, metin, sesli = false, yoneticiId = null }
       await log.uyari({ kategori: 'cambaz', olay: 'saglayici_hata', mesaj: sonuc.hata, meta: { saglayici, oturumId } });
     }
   } else {
-    const sonuc = await cevrimdisiYanitla(temizMetin);
-    cevapMetni = sonuc.metin;
+    // Saglayici secili ama anahtar yok: cekirdek zekaya dus.
+    cekirdek = await cekirdekYanitla(temizMetin, { yoneticiId });
+    cevapMetni = cekirdek.metin;
+    model_ = 'cekirdek-zeka';
   }
 
   const gecikme = Date.now() - basla;
   await mesajEkle({
     oturumId, rol: 'ajan', icerik: cevapMetni, model: model_, girdiToken, ciktiToken,
-    gecikmeMs: gecikme, hata: hataMetni, meta: { cevrimici },
+    gecikmeMs: gecikme, hata: hataMetni,
+    meta: {
+      cevrimici, motor,
+      ...(cekirdek ? { niyet: cekirdek.niyet, bulgu: cekirdek.bulguSayisi } : {}),
+    },
   });
   await oturumDokunuldu(oturumId, temizMetin);
 
-  return { tamam: true, yanit: cevapMetni, cevrimici, hafizaEklendi, gecikmeMs: gecikme };
+  return {
+    tamam: true, yanit: cevapMetni, cevrimici, hafizaEklendi, gecikmeMs: gecikme,
+    motor, niyet: cekirdek ? cekirdek.niyet : null,
+    bulgular: cekirdek && cekirdek.veri ? (cekirdek.bulguSayisi || 0) : 0,
+    eylemler: cekirdek ? cekirdek.eylemler : [],
+  };
 }
 
 module.exports = {
   oturumlariListele, oturumGetir, oturumOlustur, oturumSil, mesajlariGetir, mesajGonder,
   hafizaListele, hafizaEkle, hafizaGuncelle, hafizaSil,
+  cekirdekYanitla,
 };

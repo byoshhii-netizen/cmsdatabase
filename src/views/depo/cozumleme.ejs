@@ -1,0 +1,316 @@
+<%- include('../partials/bas') %>
+<%- include('../partials/kabuk-ust') %>
+
+<%
+  const sz = sozluk;
+  const c = cozumleme;
+  const gruplar = (c && c.bulgular && c.bulgular.gruplar) || {};
+  const u = (c && c.ustveri) || {};
+%>
+
+<section class="hud hud--vurgulu">
+  <div class="hud-serit">
+    <div class="hud-serit-sol">
+      <span class="hud-serit-im" aria-hidden="true">▤</span>
+      <div>
+        <p class="hud-ustbaslik">BELGE COZUMLEMESI · MAKINE OKUMASI</p>
+        <h1 class="hud-baslik"><%= dosya.ad %></h1>
+      </div>
+    </div>
+    <div class="hud-serit-sag">
+      <a class="cip" href="/depo/dosya/<%= dosya.id %>/indir">INDIR</a>
+      <form method="post" action="/depo/dosya/<%= dosya.id %>/coz" class="dugme-sirasi">
+        <%- csrfAlani() %>
+        <button type="submit" class="dugme dugme--kucuk"><span class="dugme-metin">YENIDEN COZUMLE</span></button>
+      </form>
+    </div>
+  </div>
+
+  <div class="dosye-satir">
+    <span class="cip cip--sonuk"><%= dosya.mime_turu %></span>
+    <span class="cip cip--sonuk"><%= sz.boyut(dosya.boyut_bayt) %></span>
+    <% if (c) { %>
+      <span class="cip cip--vurgu"><%= c.bicim || 'bilinmiyor' %></span>
+      <span class="cip cip--<%= c.durum === 'tamam' ? 'iyi' : c.durum === 'kismi' ? 'uyari' : 'tehlike' %>"><%= c.durum %></span>
+      <% if (c.dil) { %><span class="cip cip--sonuk">dil: <%= c.dil %></span><% } %>
+      <% if (c.sayfa_sayisi) { %><span class="cip cip--sonuk"><%= c.sayfa_sayisi %> sayfa</span><% } %>
+      <% if (c.entropi) { %><span class="cip cip--sonuk">entropi <%= c.entropi %></span><% } %>
+      <% if (c.sure_ms) { %><span class="cip cip--sonuk"><%= c.sure_ms %> ms</span><% } %>
+    <% } %>
+  </div>
+</section>
+
+<% if (!c) { %>
+  <section class="hud bosluk-ust">
+    <div class="bos-durum">
+      <span class="bos-durum-im" aria-hidden="true">▤</span>
+      <p>Bu dosya henüz çözümlenmedi. “Yeniden çözümle” ile metnini çıkarabilir,
+         içindeki varlıkları bulabilir ve aranabilir hale getirebilirsin.</p>
+    </div>
+  </section>
+<% } else { %>
+
+  <% if (c.risk_isaretleri && c.risk_isaretleri.length) { %>
+    <section class="hud bosluk-ust hud--tehlike">
+      <div class="hud-serit">
+        <div class="hud-serit-sol">
+          <span class="hud-serit-im" aria-hidden="true">!</span>
+          <h2 class="hud-baslik hud-baslik--kucuk">RISK ISARETLERI</h2>
+        </div>
+      </div>
+      <ul class="baglanti-listesi">
+        <% c.risk_isaretleri.forEach(function (r) { %>
+          <li class="baglanti-oge">
+            <span class="cip cip--tehlike"><%= r.replace(/_/g, ' ') %></span>
+            <span class="baglanti-ad kucuk"><%= riskAciklamalari[r] || r %></span>
+          </li>
+        <% }); %>
+      </ul>
+      <% if (c.uyusmazlik) { %>
+        <p class="hud-altbaslik bosluk-ust">
+          <strong>Uzantı uyuşmazlığı:</strong> dosya adı <code><%= dosya.ad %></code> olmasına rağmen
+          sihirli baytlar gerçek türün <code><%= c.sihirli_tur || 'bilinmiyor' %></code> olduğunu gösteriyor.
+          Bu, kasıtlı maskeleme olabilir.
+        </p>
+      <% } %>
+    </section>
+  <% } %>
+
+  <div class="hud-izgara bosluk-ust">
+    <div class="hud-veri">
+      <span class="hud-veri-etiket">KELIME</span>
+      <span class="hud-veri-deger sayi"><%= sz.bicimliSayi(c.kelime_sayisi) %></span>
+      <span class="hud-veri-alt"><%= sz.bicimliSayi(c.karakter_sayisi) %> karakter</span>
+    </div>
+    <div class="hud-veri">
+      <span class="hud-veri-etiket">BULUNAN VARLIK</span>
+      <span class="hud-veri-deger sayi"><%= (c.bulgular && c.bulgular.ozet) ? c.bulgular.ozet.toplam : 0 %></span>
+      <span class="hud-veri-alt"><%= (c.bulgular && c.bulgular.ozet) ? c.bulgular.ozet.hassas : 0 %> hassas</span>
+    </div>
+    <div class="hud-veri">
+      <span class="hud-veri-etiket">ONERI</span>
+      <span class="hud-veri-deger sayi"><%= oneriler.length %></span>
+      <span class="hud-veri-alt"><%= oneriler.filter(function (o) { return o.mevcut; }).length %> tanesi arşivde var</span>
+    </div>
+    <div class="hud-veri">
+      <span class="hud-veri-etiket">BICIM</span>
+      <span class="hud-veri-deger hud-veri-deger--kucuk"><%= c.bicim || '—' %></span>
+      <span class="hud-veri-alt">gerçek tür: <%= c.sihirli_tur || 'tespit edilemedi' %></span>
+    </div>
+  </div>
+
+  <div class="hud-yan-yana bosluk-ust">
+    <div>
+      <% if (c.ozet) { %>
+        <section class="hud">
+          <div class="hud-serit">
+            <div class="hud-serit-sol">
+              <span class="hud-serit-im" aria-hidden="true">▤</span>
+              <h2 class="hud-baslik hud-baslik--kucuk">OZET</h2>
+            </div>
+          </div>
+          <div class="motor-cevap"><p><%= c.ozet %></p></div>
+          <% if (c.anahtar_kelimeler && c.anahtar_kelimeler.length) { %>
+            <h3 class="hud-ustbaslik bosluk-ust">ANAHTAR KAVRAMLAR</h3>
+            <div class="etiketler">
+              <% c.anahtar_kelimeler.forEach(function (a) { %><span class="etiket"><%= a %></span><% }); %>
+            </div>
+          <% } %>
+        </section>
+      <% } %>
+
+      <% if (Object.keys(gruplar).length) { %>
+        <section class="hud bosluk-ust">
+          <div class="hud-serit">
+            <div class="hud-serit-sol">
+              <span class="hud-serit-im" aria-hidden="true">◆</span>
+              <h2 class="hud-baslik hud-baslik--kucuk">CIKARILAN VARLIKLAR</h2>
+            </div>
+          </div>
+
+          <form method="post" action="/depo/dosya/<%= dosya.id %>/varlik-aktar">
+            <%- csrfAlani() %>
+            <div class="hud-tablo-sarmal">
+              <table class="hud-tablo">
+                <thead><tr><th class="daralt">AKTAR</th><th class="daralt">TUR</th><th>DEGER</th><th class="sayi daralt">GUVEN</th><th>BAGLAM</th></tr></thead>
+                <tbody>
+                  <% oneriler.forEach(function (o) { %>
+                    <tr>
+                      <td class="daralt">
+                        <% if (o.mevcut) { %>
+                          <a class="cip cip--iyi" href="/arsiv/varlik/<%= o.mevcut.id %>">ARSIVDE</a>
+                        <% } else { %>
+                          <input type="checkbox" name="secim" value="<%= o.arsivTuru %>|<%= o.ad %>">
+                        <% } %>
+                      </td>
+                      <td class="daralt"><span class="cip cip--sonuk"><%= sz.VARLIK_TUR_ADI[o.arsivTuru] || o.arsivTuru %></span></td>
+                      <td><strong><%= o.ad %></strong>
+                        <% if (o.ek && o.ek.banka) { %><span class="satir-alt"><%= o.ek.banka %></span><% } %>
+                      </td>
+                      <td class="sayi daralt">%<%= Math.round(o.guven * 100) %></td>
+                      <td class="kucuk sonuk"><%= (o.baglam || '').slice(0, 100) %></td>
+                    </tr>
+                  <% }); %>
+                </tbody>
+              </table>
+            </div>
+            <div class="hud-dugmeler bosluk-ust">
+              <button type="submit" class="dugme dugme--kucuk">
+                <span class="dugme-metin">SECILENLERI ARSIVE AKTAR</span>
+              </button>
+              <span class="hud-alan-ipucu">Aktarılan varlıklar bu dosyaya ek olarak bağlanır.</span>
+            </div>
+          </form>
+
+          <% const kalanTurler = Object.keys(gruplar).filter(function (t) { return !['kisi','kurum','konum','telefon','eposta','web','ip','plaka','iban','cuzdan','sosyal','imei','kod_adi','cihaz'].includes(t); }); %>
+          <% if (kalanTurler.length) { %>
+            <h3 class="hud-ustbaslik bosluk-ust">DIGER BULGULAR</h3>
+            <div class="hud-tablo-sarmal">
+              <table class="hud-tablo">
+                <thead><tr><th class="daralt">TUR</th><th>DEGERLER</th></tr></thead>
+                <tbody>
+                  <% kalanTurler.forEach(function (t) { %>
+                    <tr>
+                      <td class="daralt"><span class="cip cip--sonuk"><%= t %></span></td>
+                      <td>
+                        <% gruplar[t].slice(0, 15).forEach(function (b) { %>
+                          <span class="cip"><%= b.deger %></span>
+                        <% }); %>
+                      </td>
+                    </tr>
+                  <% }); %>
+                </tbody>
+              </table>
+            </div>
+          <% } %>
+        </section>
+      <% } %>
+
+      <% if (c.metin) { %>
+        <section class="hud bosluk-ust">
+          <div class="hud-serit">
+            <div class="hud-serit-sol">
+              <span class="hud-serit-im" aria-hidden="true">≡</span>
+              <h2 class="hud-baslik hud-baslik--kucuk">CIKARILAN METIN</h2>
+            </div>
+            <div class="hud-serit-sag">
+              <span class="cip cip--sonuk">ilk 8.000 karakter</span>
+            </div>
+          </div>
+          <pre class="kutu kaydir"><%= c.metin.slice(0, 8000) %><%= c.metin.length > 8000 ? '\n\n… (kirpildi)' : '' %></pre>
+        </section>
+      <% } else if (c.hata) { %>
+        <section class="hud bosluk-ust hud--uyari">
+          <div class="hud-serit">
+            <div class="hud-serit-sol">
+              <span class="hud-serit-im" aria-hidden="true">△</span>
+              <h2 class="hud-baslik hud-baslik--kucuk">METIN CIKARILAMADI</h2>
+            </div>
+          </div>
+          <p><%= c.hata %></p>
+        </section>
+      <% } %>
+    </div>
+
+    <div>
+      <% if (Object.keys(u).length) { %>
+        <section class="hud">
+          <div class="hud-serit">
+            <div class="hud-serit-sol">
+              <span class="hud-serit-im" aria-hidden="true">⌸</span>
+              <h2 class="hud-baslik hud-baslik--kucuk">USTVERI</h2>
+            </div>
+          </div>
+          <% if (u.gps_enlem !== undefined) { %>
+            <div class="bildirim-serit">
+              <span class="bildirim-serit-im" aria-hidden="true">⊕</span>
+              <span>
+                <strong>GPS konumu bulundu:</strong> <%= u.gps_enlem %>, <%= u.gps_boylam %>
+                <% if (u.gps_yukseklik !== undefined) { %>(<%= u.gps_yukseklik %> m)<% } %>
+                · <a href="/analiz/harita">haritada göster →</a>
+              </span>
+            </div>
+          <% } %>
+          <dl class="ozellik-listesi">
+            <% Object.keys(u).slice(0, 40).forEach(function (a) { %>
+              <dt><%= a.replace(/_/g, ' ') %></dt>
+              <dd><%= typeof u[a] === 'object' ? JSON.stringify(u[a]).slice(0, 200) : String(u[a]).slice(0, 200) %></dd>
+            <% }); %>
+          </dl>
+        </section>
+      <% } %>
+
+      <% if (c.bulgular && c.bulgular.temalar && c.bulgular.temalar.length) { %>
+        <section class="hud bosluk-ust">
+          <div class="hud-serit">
+            <div class="hud-serit-sol">
+              <span class="hud-serit-im" aria-hidden="true">◬</span>
+              <h2 class="hud-baslik hud-baslik--kucuk">TEMATIK AGIRLIK</h2>
+            </div>
+          </div>
+          <% c.bulgular.temalar.forEach(function (t) { %>
+            <div class="hud-olcer">
+              <div class="hud-olcer-ust">
+                <span><%= t.tema %></span>
+                <span class="hud-olcer-deger"><%= t.puan %></span>
+              </div>
+              <div class="hud-olcer-ray"><span class="hud-olcer-dolu" data-oran="<%= Math.min(100, t.puan * 10) %>"></span></div>
+            </div>
+          <% }); %>
+        </section>
+      <% } %>
+
+      <section class="hud bosluk-ust">
+        <div class="hud-serit">
+          <div class="hud-serit-sol">
+            <span class="hud-serit-im" aria-hidden="true">＋</span>
+            <h2 class="hud-baslik hud-baslik--kucuk">ARSIV KAYDI URET</h2>
+          </div>
+        </div>
+        <p class="hud-altbaslik">
+          Belgenin metnini, özetini, anahtar kavramlarını ve bulunan tarih/konum bilgisini
+          kullanarak doğrudan bir istihbarat kaydı oluşturur.
+        </p>
+        <form method="post" action="/depo/dosya/<%= dosya.id %>/kayit-uret" class="hud-form bosluk-ust">
+          <%- csrfAlani() %>
+          <div class="hud-alan">
+            <label for="ku-tasnif">TASNIF</label>
+            <select id="ku-tasnif" name="tasnif">
+              <% ['acik','hizmete_ozel','gizli','cok_gizli'].forEach(function (t) { %>
+                <option value="<%= t %>" <%= t === (locals.varsayilanTasnif || 'hizmete_ozel') ? 'selected' : '' %>><%= sz.TASNIF_ADI[t] %></option>
+              <% }); %>
+            </select>
+          </div>
+          <div class="hud-dugmeler">
+            <button type="submit" class="dugme dugme--kucuk"><span class="dugme-metin">KAYIT URET</span></button>
+          </div>
+        </form>
+      </section>
+
+      <% if (benzerler && benzerler.length) { %>
+        <section class="hud bosluk-ust">
+          <div class="hud-serit">
+            <div class="hud-serit-sol">
+              <span class="hud-serit-im" aria-hidden="true">≈</span>
+              <h2 class="hud-baslik hud-baslik--kucuk">BENZER KAYNAKLAR</h2>
+            </div>
+          </div>
+          <div class="kaynak-listesi">
+            <% benzerler.forEach(function (b) { %>
+              <a class="kaynak-kart" href="<%= b.kaynak_tur === 'kayit' ? '/arsiv/kayit/' + b.kaynak_id : b.kaynak_tur === 'varlik' ? '/arsiv/varlik/' + b.kaynak_id : b.kaynak_tur === 'dosya' ? '/depo/dosya/' + b.kaynak_id + '/cozumleme' : '/arsiv' %>">
+                <div class="kaynak-kart-ust">
+                  <span class="cip cip--sonuk"><%= b.kaynak_tur %></span>
+                  <span class="kaynak-kart-baslik"><%= b.baslik %></span>
+                </div>
+                <% if (b.alinti) { %><div class="kaynak-kart-alinti"><%= b.alinti.slice(0, 140) %></div><% } %>
+              </a>
+            <% }); %>
+          </div>
+        </section>
+      <% } %>
+    </div>
+  </div>
+<% } %>
+
+<%- include('../partials/kabuk-alt') %>
+<%- include('../partials/son', { betikler: [] }) %>

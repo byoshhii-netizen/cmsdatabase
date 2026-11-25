@@ -1,0 +1,90 @@
+<%- include('../partials/bas') %>
+<%- include('../partials/kabuk-ust') %>
+
+<% const sz = sozluk; const q = sorgu || {}; %>
+
+<section class="hud">
+  <div class="hud-serit">
+    <div class="hud-serit-sol">
+      <span class="hud-serit-im" aria-hidden="true">⁂</span>
+      <div>
+        <p class="hud-ustbaslik">
+          <% if (kumeler.tamam) { %>
+            <%= kumeler.kayitSayisi %> KAYIT · <%= kumeler.kumeler.length %> KUME · TUTARLILIK <%= kumeler.tutarlilik %>
+          <% } else { %>YETERSIZ VERI<% } %>
+        </p>
+        <h1 class="hud-baslik">KONU KUMELERI</h1>
+      </div>
+    </div>
+  </div>
+
+  <p class="hud-altbaslik">
+    Denetimsiz öğrenme: kayıtlar TF-IDF vektörlerine çevrilip kosinüs uzaklığıyla
+    k-ortalama ile kümelenir. Kimse etiket vermez; <strong>hangi konuların birlikte
+    hareket ettiğini</strong> verinin kendisi söyler. Tutarlılık 1'e yakınsa kümeler nettir.
+  </p>
+
+  <form method="get" action="/analiz/kumeler" class="filtre-cubugu">
+    <div class="hud-alan">
+      <label for="k-k">KUME SAYISI (0 = otomatik)</label>
+      <input type="number" id="k-k" name="k" min="0" max="12" value="<%= q.k || 0 %>">
+    </div>
+    <div class="hud-alan">
+      <label for="k-limit">KAYIT SINIRI</label>
+      <input type="number" id="k-limit" name="limit" min="10" max="2000" step="50" value="<%= q.limit || 400 %>">
+    </div>
+    <div class="hud-alan">
+      <label for="k-gun">SON KAC GUN</label>
+      <input type="number" id="k-gun" name="gun" min="1" max="3650" value="<%= q.gun || '' %>">
+    </div>
+    <div class="hud-alan">
+      <label class="gorsel-gizli" for="k-gonder">UYGULA</label>
+      <button type="submit" id="k-gonder" class="dugme dugme--kucuk"><span class="dugme-metin">UYGULA</span></button>
+    </div>
+  </form>
+</section>
+
+<% if (kumeler.tamam) { %>
+  <div class="hud-izgara--2 hud-izgara bosluk-ust">
+    <% kumeler.kumeler.forEach(function (c) { %>
+      <section class="hud">
+        <div class="hud-serit">
+          <div class="hud-serit-sol">
+            <span class="hud-serit-im" aria-hidden="true">K<%= c.no %></span>
+            <div>
+              <p class="hud-ustbaslik"><%= c.boyut %> KAYIT</p>
+              <h2 class="hud-baslik hud-baslik--kucuk"><%= c.baslik.slice(0, 4).join(' · ') %></h2>
+            </div>
+          </div>
+        </div>
+        <div class="etiketler">
+          <% c.baslik.forEach(function (t) { %><span class="etiket"><%= t %></span><% }); %>
+        </div>
+        <ul class="baglanti-listesi bosluk-ust">
+          <% c.kayitlar.forEach(function (k) { %>
+            <li class="baglanti-oge">
+              <span class="kod"><%= k.kod %></span>
+              <a class="baglanti-ad" href="/arsiv/kayit/<%= k.id %>">
+                <%= k.baslik %>
+                <span class="satir-alt"><%= sz.KAYIT_TUR_ADI[k.tur] || k.tur %> · <%= sz.tarihSozcuk(k.zaman, { gunAdi: false }) %></span>
+              </a>
+            </li>
+          <% }); %>
+        </ul>
+        <% if (c.boyut > c.kayitlar.length) { %>
+          <p class="hud-altbaslik">… ve <%= c.boyut - c.kayitlar.length %> kayıt daha</p>
+        <% } %>
+      </section>
+    <% }); %>
+  </div>
+<% } else { %>
+  <section class="hud bosluk-ust">
+    <div class="bos-durum">
+      <span class="bos-durum-im" aria-hidden="true">⁂</span>
+      <p><%= kumeler.hata || 'Kümeleme yapılamadı.' %></p>
+    </div>
+  </section>
+<% } %>
+
+<%- include('../partials/kabuk-alt') %>
+<%- include('../partials/son', { betikler: [] }) %>

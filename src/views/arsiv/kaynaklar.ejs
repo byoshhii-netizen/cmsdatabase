@@ -1,0 +1,112 @@
+<%- include('../partials/bas') %>
+<%- include('../partials/kabuk-ust') %>
+
+<% const sz = sozluk; %>
+
+<section class="hud">
+  <div class="hud-serit">
+    <div class="hud-serit-sol">
+      <span class="hud-serit-im" aria-hidden="true">◉</span>
+      <div>
+        <p class="hud-ustbaslik"><%= kaynaklar.length %> KAYNAK</p>
+        <h1 class="hud-baslik">KAYNAKLAR</h1>
+      </div>
+    </div>
+  </div>
+
+  <p class="hud-altbaslik">
+    Her kaynak bir <strong>güvenilirlik derecesi</strong> taşır (Admiralty A–F). Bu derece,
+    o kaynaktan gelen kayıtların ağırlığını belirler: çekirdek zekâ cevap üretirken
+    A/B dereceli kaynakları öne alır, D/E dereceli ya da yalanlanmış kayıtları geri plana düşürür.
+  </p>
+
+  <div class="hud-tablo-sarmal bosluk-ust">
+    <table class="hud-tablo">
+      <thead>
+        <tr><th class="daralt">KOD</th><th>AD</th><th class="daralt">TUR</th><th class="daralt">DERECE</th>
+            <th class="sayi daralt">KAYIT</th><th class="daralt">DURUM</th><th>ACIKLAMA</th><th class="daralt"></th></tr>
+      </thead>
+      <tbody>
+        <% kaynaklar.forEach(function (k) { %>
+          <tr>
+            <td class="daralt"><span class="kod"><%= k.kod %></span></td>
+            <td><a href="/arsiv/kayitlar?kaynak=<%= k.id %>"><%= k.ad %></a>
+              <% if (k.irtibat) { %><span class="satir-alt">irtibat: <%= k.irtibat %></span><% } %></td>
+            <td class="daralt kucuk"><%= k.tur.replace('_', ' ') %></td>
+            <td class="daralt">
+              <span class="derece derece--<%= String(k.guvenilirlik).toLowerCase() %>"
+                    title="<%= sz.GUVENILIRLIK_ADI[k.guvenilirlik] %>"><%= k.guvenilirlik %></span>
+            </td>
+            <td class="sayi daralt"><%= k.kayit_sayisi %></td>
+            <td class="daralt kucuk">
+              <span class="durum-nokta durum-nokta--<%= k.aktif ? 'aktif' : 'pasif' %>" aria-hidden="true"></span>
+              <%= k.aktif ? 'aktif' : 'pasif' %>
+            </td>
+            <td class="kucuk sonuk"><%= (k.aciklama || '').slice(0, 90) %></td>
+            <td class="daralt">
+              <form method="post" action="/arsiv/kaynak/<%= k.id %>/sil" class="dugme-sirasi"
+                    data-onay="Kaynağı kaldırmak istediğine emin misin?">
+                <%- csrfAlani() %>
+                <button type="submit" class="dugme dugme--kucuk dugme--sonuk"><span class="dugme-metin">×</span></button>
+              </form>
+            </td>
+          </tr>
+        <% }); %>
+        <% if (!kaynaklar.length) { %>
+          <tr><td colspan="8"><p class="hud-altbaslik">Kaynak tanımlanmamış.</p></td></tr>
+        <% } %>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="hud bosluk-ust">
+  <div class="hud-serit">
+    <div class="hud-serit-sol">
+      <span class="hud-serit-im" aria-hidden="true">＋</span>
+      <h2 class="hud-baslik hud-baslik--kucuk">YENI KAYNAK</h2>
+    </div>
+  </div>
+  <form method="post" action="/arsiv/kaynak" class="hud-form">
+    <%- csrfAlani() %>
+    <div class="hud-form-izgara">
+      <div class="hud-alan hud-alan--genis">
+        <label for="k-ad">AD / KOD ADI</label>
+        <input type="text" id="k-ad" name="ad" required maxlength="160">
+      </div>
+      <div class="hud-alan">
+        <label for="k-tur">TUR</label>
+        <select id="k-tur" name="tur">
+          <% sabitler.kaynakTurleri.forEach(function (t) { %>
+            <option value="<%= t %>"><%= t.replace('_', ' ') %></option>
+          <% }); %>
+        </select>
+      </div>
+      <div class="hud-alan">
+        <label for="k-guven">GUVENILIRLIK</label>
+        <select id="k-guven" name="guvenilirlik">
+          <% sabitler.guvenilirlikler.forEach(function (g) { %>
+            <option value="<%= g %>" <%= g === 'C' ? 'selected' : '' %>><%= g %> — <%= sz.GUVENILIRLIK_ADI[g] %></option>
+          <% }); %>
+        </select>
+      </div>
+      <div class="hud-alan">
+        <label for="k-irtibat">IRTIBAT</label>
+        <input type="text" id="k-irtibat" name="irtibat" maxlength="200">
+      </div>
+      <div class="hud-alan hud-alan--genis">
+        <label for="k-aciklama">ACIKLAMA</label>
+        <textarea id="k-aciklama" name="aciklama" rows="3"></textarea>
+      </div>
+    </div>
+    <div class="hud-dugmeler">
+      <button type="submit" class="dugme"><span class="dugme-metin">KAYNAK EKLE</span></button>
+    </div>
+  </form>
+</section>
+
+<%- include('../partials/kabuk-alt') %>
+<% const betikler = ['/js/arsiv.js']; %>
+<%- include('../partials/son', { betikler: betikler }) %>
+<%- const betikler = arsiv.js -%>
+<% include("partials/son") -%>

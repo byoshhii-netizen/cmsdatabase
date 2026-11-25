@@ -1,0 +1,116 @@
+<%
+  /*
+   * Cekirdek zekanin cevabini gosterir.
+   * Beklenen: cevap = { niyet, cevap, bulgular, eylemler, sureMs }
+   *
+   * Motor cevabini hafif bir isaretleme diliyle uretir (### baslik, **kalin**,
+   * - madde, > uyari, `kod`). Burada HTML'e cevrilir; TUM metin once
+   * kacirilir, sonra yalnizca bilinen kaliplar etikete donusturulur.
+   * Boylece motorun ya da arsivdeki verinin HTML enjekte etmesi imkansizdir.
+   */
+  const c = locals.cevap;
+  const sz = locals.sozluk;
+
+  function kacir(m) {
+    return String(m == null ? '' : m)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+
+  function satirIci(m) {
+    return kacir(m)
+      .replace(/`([^`]+)`/g, '<code>$1</code>')
+      .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+      .replace(/(^|\s)_([^_]+)_(?=\s|$|[.,;:!?])/g, '$1<em>$2</em>');
+  }
+
+  function isaretlemeyiCevir(ham) {
+    const satirlar = String(ham || '').split('\n');
+    let html = '';
+    let listede = false;
+
+    for (const satirHam of satirlar) {
+      const satir = satirHam.replace(/\s+$/, '');
+
+      if (!satir.trim()) {
+        if (listede) { html += '</ul>'; listede = false; }
+        continue;
+      }
+      if (/^#{3,4}\s+/.test(satir)) {
+        if (listede) { html += '</ul>'; listede = false; }
+        html += `<h4>${satirIci(satir.replace(/^#{3,4}\s+/, ''))}</h4>`;
+        continue;
+      }
+      if (/^>\s?/.test(satir)) {
+        if (listede) { html += '</ul>'; listede = false; }
+        html += `<blockquote>${satirIci(satir.replace(/^>\s?/, ''))}</blockquote>`;
+        continue;
+      }
+      if (/^[-•]\s+/.test(satir)) {
+        if (!listede) { html += '<ul>'; listede = true; }
+        html += `<li>${satirIci(satir.replace(/^[-•]\s+/, ''))}</li>`;
+        continue;
+      }
+      if (listede) { html += '</ul>'; listede = false; }
+      html += `<p>${satirIci(satir)}</p>`;
+    }
+    if (listede) html += '</ul>';
+    return html;
+  }
+
+  const niyetAdlari = {
+    varlik_dosyesi: 'varlık dosyesi', baglanti: 'bağlantı analizi', ag: 'ağ analizi',
+    zaman_cizgisi: 'zaman çizgisi', anomali: 'anomali taraması', risk: 'risk sıralaması',
+    celiski: 'çelişki taraması', bosluk: 'boşluk analizi', ozet: 'özetleme',
+    siniflandir: 'sınıflandırma', istatistik: 'istatistik', arama: 'arşiv araması',
+    hesap: 'hesaplama', kimlik: 'motor tanıtımı', selam: 'karşılama', zaman: 'saat',
+  };
+%>
+
+<% if (c) { %>
+  <div class="motor-ust">
+    <span class="cip cip--vurgu"><%= niyetAdlari[c.niyet] || c.niyet %></span>
+    <% if (c.bulgular && c.bulgular.length) { %>
+      <span><%= c.bulgular.length %> kaynak</span>
+    <% } %>
+    <% if (c.sureMs !== undefined) { %><span><%= c.sureMs %> ms</span><% } %>
+    <span>yerel motor · dış servis kullanılmadı</span>
+  </div>
+
+  <div class="motor-cevap">
+    <%- isaretlemeyiCevir(c.cevap) %>
+  </div>
+
+  <% if (c.bulgular && c.bulgular.length) { %>
+    <h4 class="hud-ustbaslik bosluk-ust">DAYANAK KAYNAKLAR</h4>
+    <div class="kaynak-listesi">
+      <% c.bulgular.slice(0, 8).forEach(function (b) { %>
+        <a class="kaynak-kart <%= (b.agirlik !== undefined && b.agirlik < 0.5) ? 'kaynak-kart--zayif' : '' %>"
+           href="<%= b.yol %>">
+          <div class="kaynak-kart-ust">
+            <span class="cip cip--sonuk"><%= b.etiket %></span>
+            <span class="kaynak-kart-baslik"><%= b.baslik %></span>
+            <% if (b.tasnif) { %>
+              <span class="cip cip-tasnif cip-tasnif--<%= b.tasnif %>"><%= sz.TASNIF_ADI[b.tasnif] || b.tasnif %></span>
+            <% } %>
+            <% if (b.guvenilirlik) { %>
+              <span class="derece derece--<%= String(b.guvenilirlik).toLowerCase() %>"><%= b.guvenilirlik %><%= b.dogruluk || '' %></span>
+            <% } %>
+            <% if (b.durum === 'yalanlandi') { %>
+              <span class="cip cip--tehlike">YALANLANDI</span>
+            <% } %>
+          </div>
+          <% if (b.alinti) { %><div class="kaynak-kart-alinti"><%= b.alinti %></div><% } %>
+        </a>
+      <% }); %>
+    </div>
+  <% } %>
+
+  <% if (c.eylemler && c.eylemler.length) { %>
+    <div class="oneri-seridi">
+      <% c.eylemler.forEach(function (e) { %>
+        <a class="oneri" href="<%= e.yol %>"><%= e.etiket %></a>
+      <% }); %>
+    </div>
+  <% } %>
+<% } %>

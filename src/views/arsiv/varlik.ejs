@@ -1,0 +1,497 @@
+<% locals.sayfaTasnifi = varlik.tasnif; %>
+<%- include('../partials/bas') %>
+<%- include('../partials/kabuk-ust') %>
+
+<%
+  const sz = sozluk;
+  const turIm = {
+    kisi: '☗', kurum: '▦', konum: '⊕', arac: '▭', telefon: '✆', eposta: '✉',
+    hesap: '⛁', web: '⌘', cihaz: '▥', maddi: '◳', kod_adi: '⌗', grup: '⛓', etkinlik: '◷',
+  }[varlik.tur] || '◆';
+%>
+
+<!-- =============================================== DOSYE BASLIGI -->
+<section class="hud hud--vurgulu hud--dort-kose">
+  <span class="hud-kose hud-kose--sag-ust" aria-hidden="true"></span>
+  <span class="hud-kose hud-kose--sol-alt" aria-hidden="true"></span>
+
+  <div class="dosye-bas">
+    <div class="dosye-kimlik">
+      <div class="dosye-amblem" aria-hidden="true"><%= turIm %></div>
+      <div class="dosye-ad">
+        <p class="hud-ustbaslik">VARLIK DOSYESI · <%= varlik.kod %></p>
+        <h1><%= varlik.ad %></h1>
+        <% if (varlik.takma_adlar && varlik.takma_adlar.length) { %>
+          <p class="hud-altbaslik">Bilinen diğer adlar: <%= varlik.takma_adlar.join(' · ') %></p>
+        <% } %>
+        <div class="dosye-satir">
+          <%- include('../partials/arsiv-cip', { oge: varlik, turAdi: sz.VARLIK_TUR_ADI[varlik.tur] || varlik.tur, sozluk: sz }) %>
+        </div>
+        <% if (varlik.etiketler && varlik.etiketler.length) { %>
+          <div class="etiketler bosluk-ust">
+            <% varlik.etiketler.forEach(function (e) { %>
+              <a class="etiket" href="/arsiv/varliklar?etiket=<%= encodeURIComponent(e) %>">#<%= e %></a>
+            <% }); %>
+          </div>
+        <% } %>
+      </div>
+    </div>
+
+    <div class="dosye-olculer">
+      <div class="hud-veri">
+        <span class="hud-veri-etiket">ONEM</span>
+        <span class="hud-veri-deger hud-veri-deger--kucuk sayi"><%= varlik.onem %></span>
+      </div>
+      <div class="hud-veri">
+        <span class="hud-veri-etiket">BAG</span>
+        <span class="hud-veri-deger hud-veri-deger--kucuk sayi"><%= iliskiler.length %></span>
+      </div>
+      <div class="hud-veri">
+        <span class="hud-veri-etiket">KAYIT</span>
+        <span class="hud-veri-deger hud-veri-deger--kucuk sayi"><%= kayitlar.toplam %></span>
+      </div>
+      <div class="hud-veri">
+        <span class="hud-veri-etiket">OLAY</span>
+        <span class="hud-veri-deger hud-veri-deger--kucuk sayi"><%= olaylar.toplam %></span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================ MOTOR DEGERLENDIRMESI -->
+<% if (sentez && sentez.cevap) { %>
+  <section class="hud bosluk-ust">
+    <div class="hud-serit">
+      <div class="hud-serit-sol">
+        <span class="hud-serit-im" aria-hidden="true">◉</span>
+        <h2 class="hud-baslik hud-baslik--kucuk">CEKIRDEK ZEKA DEGERLENDIRMESI</h2>
+      </div>
+      <div class="hud-serit-sag">
+        <a class="cip" href="/cambaz?soru=<%= encodeURIComponent(varlik.ad + ' kimdir') %>">CAMBAZ'DA SOR →</a>
+      </div>
+    </div>
+    <%- include('../partials/motor-cevabi', { cevap: sentez, sozluk: sz }) %>
+  </section>
+<% } %>
+
+<div class="hud-yan-yana bosluk-ust">
+  <div>
+    <!-- ======================================================= OZET -->
+    <% if (varlik.ozet || varlik.detay) { %>
+      <section class="hud">
+        <div class="hud-serit">
+          <div class="hud-serit-sol">
+            <span class="hud-serit-im" aria-hidden="true">✎</span>
+            <h2 class="hud-baslik hud-baslik--kucuk">DOSYE NOTU</h2>
+          </div>
+        </div>
+        <% if (varlik.ozet) { %><p><%= varlik.ozet %></p><% } %>
+        <% if (varlik.detay) { %><p class="kucuk"><%= varlik.detay %></p><% } %>
+      </section>
+    <% } %>
+
+    <!-- =================================================== ILISKILER -->
+    <section class="hud <%= varlik.ozet || varlik.detay ? 'bosluk-ust' : '' %>">
+      <div class="hud-serit">
+        <div class="hud-serit-sol">
+          <span class="hud-serit-im" aria-hidden="true">⬡</span>
+          <h2 class="hud-baslik hud-baslik--kucuk">ILISKILER (<%= iliskiler.length %>)</h2>
+        </div>
+        <div class="hud-serit-sag">
+          <a class="cip" href="/analiz/graf?varlik=<%= varlik.id %>">GRAFIKTE AC →</a>
+        </div>
+      </div>
+
+      <% if (iliskiler.length) { %>
+        <ul class="baglanti-listesi">
+          <% iliskiler.forEach(function (i) { %>
+            <%
+              const kendisiKaynak = Number(i.kaynak_varlik_id) === Number(varlik.id);
+              const karsiId = kendisiKaynak ? i.hedef_varlik_id : i.kaynak_varlik_id;
+              const karsiAd = kendisiKaynak ? i.hedef_ad : i.kaynak_ad;
+              const karsiTur = kendisiKaynak ? i.hedef_varlik_tur : i.kaynak_varlik_tur;
+              const okIm = i.yon === 'tek' ? (kendisiKaynak ? '→' : '←') : '↔';
+            %>
+            <li class="baglanti-oge">
+              <span class="cip cip--sonuk" title="İlişki yönü"><%= okIm %></span>
+              <a class="baglanti-ad" href="/arsiv/varlik/<%= karsiId %>">
+                <%= karsiAd %>
+                <span class="satir-alt">
+                  <%= sz.VARLIK_TUR_ADI[karsiTur] || karsiTur %> ·
+                  <%= sz.ILISKI_TUR_ADI[i.tur] || i.tur %><%= i.etiket ? ' · ' + i.etiket : '' %>
+                  <%= i.otomatik ? ' · otomatik çıkarım' : '' %>
+                </span>
+              </a>
+              <span class="derece derece--<%= String(i.guvenilirlik).toLowerCase() %>"><%= i.guvenilirlik %></span>
+              <span class="baglanti-guc" title="Bağ gücü <%= i.guc %>/100">
+                <i data-genislik="<%= i.guc %>"></i>
+              </span>
+              <form method="post" action="/arsiv/iliski/<%= i.id %>/sil" class="dugme-sirasi">
+                <%- csrfAlani() %>
+                <input type="hidden" name="geri" value="/arsiv/varlik/<%= varlik.id %>">
+                <button type="submit" class="dugme dugme--kucuk dugme--sonuk" title="İlişkiyi kaldır">
+                  <span class="dugme-metin">×</span>
+                </button>
+              </form>
+            </li>
+          <% }); %>
+        </ul>
+      <% } else { %>
+        <div class="bos-durum">
+          <span class="bos-durum-im" aria-hidden="true">⬡</span>
+          <p>Bu varlık hiçbir ilişkiye bağlı değil. Aşağıdaki formla bağlantı kurduğunda
+             bağlantı grafiğinde ve yol analizinde görünmeye başlar.</p>
+        </div>
+      <% } %>
+
+      <!-- Yeni iliski -->
+      <form method="post" action="/arsiv/iliski" class="hud-form bosluk-ust">
+        <%- csrfAlani() %>
+        <input type="hidden" name="kaynak_varlik_id" value="<%= varlik.id %>">
+        <input type="hidden" name="geri" value="/arsiv/varlik/<%= varlik.id %>">
+
+        <div class="hud-form-izgara">
+          <div class="hud-alan hud-alan--genis">
+            <label for="i-hedef">HEDEF VARLIK</label>
+            <input type="text" id="i-hedef" name="hedef_arama" class="varlik-arama"
+                   data-hedef="i-hedef-id" placeholder="ad yaz ve listeden seç" autocomplete="off">
+            <input type="hidden" id="i-hedef-id" name="hedef_varlik_id">
+            <ul class="varlik-oneri" id="i-hedef-oneri" hidden></ul>
+          </div>
+          <div class="hud-alan">
+            <label for="i-tur">ILISKI TURU</label>
+            <select id="i-tur" name="tur">
+              <% sabitler.iliskiTurleri.forEach(function (t) { %>
+                <option value="<%= t %>"><%= sz.ILISKI_TUR_ADI[t] || t %></option>
+              <% }); %>
+            </select>
+          </div>
+          <div class="hud-alan">
+            <label for="i-etiket">ETIKET</label>
+            <input type="text" id="i-etiket" name="etiket" maxlength="80" placeholder="örn. iş ortağı">
+          </div>
+          <div class="hud-alan">
+            <label for="i-guc">GUC (0-100)</label>
+            <input type="number" id="i-guc" name="guc" min="0" max="100" value="50">
+          </div>
+          <div class="hud-alan">
+            <label for="i-yon">YON</label>
+            <select id="i-yon" name="yon">
+              <option value="cift">çift yönlü</option>
+              <option value="tek">tek yönlü</option>
+            </select>
+          </div>
+        </div>
+        <div class="hud-dugmeler">
+          <button type="submit" class="dugme dugme--kucuk"><span class="dugme-metin">ILISKI EKLE</span></button>
+        </div>
+      </form>
+    </section>
+
+    <!-- ===================================================== KAYITLAR -->
+    <section class="hud bosluk-ust">
+      <div class="hud-serit">
+        <div class="hud-serit-sol">
+          <span class="hud-serit-im" aria-hidden="true">≣</span>
+          <h2 class="hud-baslik hud-baslik--kucuk">BAGLI KAYITLAR (<%= kayitlar.toplam %>)</h2>
+        </div>
+        <div class="hud-serit-sag">
+          <a class="cip" href="/arsiv/kayitlar?varlik=<%= varlik.id %>">TUMU →</a>
+        </div>
+      </div>
+
+      <% if (kayitlar.kayitlar.length) { %>
+        <div class="hud-tablo-sarmal">
+          <table class="hud-tablo">
+            <thead>
+              <tr><th class="daralt">KOD</th><th>BASLIK</th><th class="daralt">DERECE</th><th class="daralt">DURUM</th><th class="daralt">ZAMAN</th></tr>
+            </thead>
+            <tbody>
+              <% kayitlar.kayitlar.forEach(function (k) { %>
+                <tr>
+                  <td class="daralt"><span class="kod"><%= k.kod %></span></td>
+                  <td><a href="/arsiv/kayit/<%= k.id %>"><%= k.baslik %></a></td>
+                  <td class="daralt">
+                    <span class="derece derece--<%= String(k.guvenilirlik).toLowerCase() %>"><%= k.guvenilirlik %><%= k.dogruluk %></span>
+                  </td>
+                  <td class="daralt kucuk">
+                    <span class="durum-nokta durum-nokta--<%= k.durum %>" aria-hidden="true"></span>
+                    <%= sz.DURUM_ADI[k.durum] || k.durum %>
+                  </td>
+                  <td class="daralt kucuk sonuk"><%= sz.tarihSozcuk(k.zaman, { gunAdi: false }) %></td>
+                </tr>
+              <% }); %>
+            </tbody>
+          </table>
+        </div>
+      <% } else { %>
+        <p class="hud-altbaslik">Bu varlığa bağlı kayıt yok.</p>
+      <% } %>
+    </section>
+  </div>
+
+  <!-- ===================================================== YAN SUTUN -->
+  <div>
+    <!-- Ozellikler -->
+    <section class="hud">
+      <div class="hud-serit">
+        <div class="hud-serit-sol">
+          <span class="hud-serit-im" aria-hidden="true">⌸</span>
+          <h2 class="hud-baslik hud-baslik--kucuk">KUNYE</h2>
+        </div>
+      </div>
+      <dl class="ozellik-listesi">
+        <dt>KOD</dt><dd><%= varlik.kod %></dd>
+        <dt>TUR</dt><dd><%= sz.VARLIK_TUR_ADI[varlik.tur] || varlik.tur %></dd>
+        <dt>DURUM</dt><dd><%= sz.DURUM_ADI[varlik.durum] || varlik.durum %></dd>
+        <dt>TASNIF</dt><dd><%= sz.TASNIF_ADI[varlik.tasnif] %></dd>
+        <dt>KAYNAK</dt><dd><%= varlik.guvenilirlik %> — <%= sz.GUVENILIRLIK_ADI[varlik.guvenilirlik] %></dd>
+        <dt>DOGRULUK</dt><dd><%= varlik.dogruluk %> — <%= sz.DOGRULUK_ADI[varlik.dogruluk] %></dd>
+        <% if (varlik.ulke) { %><dt>ULKE</dt><dd><%= varlik.ulke %></dd><% } %>
+        <% if (varlik.adres) { %><dt>ADRES</dt><dd><%= varlik.adres %></dd><% } %>
+        <% if (varlik.enlem !== null && varlik.boylam !== null) { %>
+          <dt>KONUM</dt>
+          <dd><%= varlik.enlem %>, <%= varlik.boylam %> · <a href="/analiz/harita">haritada</a></dd>
+        <% } %>
+        <% if (varlik.baslangic_tarihi) { %>
+          <dt>BASLANGIC</dt><dd><%= sz.tarihSozcuk(varlik.baslangic_tarihi, { gunAdi: false }) %></dd>
+        <% } %>
+        <dt>OLUSTURULDU</dt><dd><%= sz.tarihSozcuk(varlik.olusturuldu_at, { gunAdi: false }) %></dd>
+        <dt>GUNCELLENDI</dt><dd><%= sz.gorece(varlik.guncellendi_at) %></dd>
+      </dl>
+
+      <% const ozellikAnahtarlari = Object.keys(varlik.ozellikler || {}); %>
+      <% if (ozellikAnahtarlari.length) { %>
+        <h3 class="hud-ustbaslik bosluk-ust">EK OZELLIKLER</h3>
+        <dl class="ozellik-listesi">
+          <% ozellikAnahtarlari.slice(0, 20).forEach(function (a) { %>
+            <dt><%= a.replace(/_/g, ' ') %></dt>
+            <dd><%= typeof varlik.ozellikler[a] === 'object' ? JSON.stringify(varlik.ozellikler[a]) : varlik.ozellikler[a] %></dd>
+          <% }); %>
+        </dl>
+      <% } %>
+    </section>
+
+    <!-- Olaylar -->
+    <section class="hud bosluk-ust">
+      <div class="hud-serit">
+        <div class="hud-serit-sol">
+          <span class="hud-serit-im" aria-hidden="true">◷</span>
+          <h2 class="hud-baslik hud-baslik--kucuk">OLAYLAR (<%= olaylar.toplam %>)</h2>
+        </div>
+      </div>
+      <% if (olaylar.olaylar.length) { %>
+        <ul class="zaman-ray">
+          <% olaylar.olaylar.slice(0, 12).forEach(function (o) { %>
+            <li class="zaman-oge <%= o.onem >= 80 ? 'zaman-oge--kritik' : 'zaman-oge--olay' %>">
+              <span class="zaman-zaman"><%= sz.tarihSozcuk(o.zaman, { gunAdi: false, saat: true }) %></span>
+              <a class="zaman-baslik" href="/arsiv/olay/<%= o.id %>"><%= o.baslik %></a>
+              <% if (o.konum) { %><span class="cip cip--sonuk"><%= o.konum %></span><% } %>
+              <span class="cip cip--sonuk"><%= o.tur %></span>
+            </li>
+          <% }); %>
+        </ul>
+      <% } else { %>
+        <p class="hud-altbaslik">Bağlı olay yok.</p>
+      <% } %>
+    </section>
+
+    <!-- Ekler -->
+    <section class="hud bosluk-ust">
+      <div class="hud-serit">
+        <div class="hud-serit-sol">
+          <span class="hud-serit-im" aria-hidden="true">▤</span>
+          <h2 class="hud-baslik hud-baslik--kucuk">EKLER (<%= ekler.length %>)</h2>
+        </div>
+      </div>
+      <% if (ekler.length) { %>
+        <ul class="baglanti-listesi">
+          <% ekler.forEach(function (e) { %>
+            <li class="baglanti-oge">
+              <span class="cip cip--sonuk"><%= e.oge_tur %></span>
+              <% if (e.oge_tur === 'dosya' && e.detay) { %>
+                <a class="baglanti-ad" href="/depo/dosya/<%= e.oge_id %>/cozumleme">
+                  <%= e.detay.ad %>
+                  <span class="satir-alt"><%= sz.boyut(e.detay.boyut_bayt) %> · <%= e.detay.mime_turu %></span>
+                </a>
+              <% } else if (e.oge_tur === 'belge' && e.detay) { %>
+                <a class="baglanti-ad" href="/depo/belge/<%= e.oge_id %>"><%= e.detay.baslik %></a>
+              <% } else { %>
+                <span class="baglanti-ad">#<%= e.oge_id %></span>
+              <% } %>
+            </li>
+          <% }); %>
+        </ul>
+      <% } else { %>
+        <p class="hud-altbaslik">Bağlı dosya yok.</p>
+      <% } %>
+    </section>
+
+    <!-- Benzerler -->
+    <% if (benzerler && benzerler.length) { %>
+      <section class="hud bosluk-ust">
+        <div class="hud-serit">
+          <div class="hud-serit-sol">
+            <span class="hud-serit-im" aria-hidden="true">≈</span>
+            <h2 class="hud-baslik hud-baslik--kucuk">ICERIK OLARAK BENZER</h2>
+          </div>
+        </div>
+        <p class="hud-altbaslik">Metin benzerliğine göre; ilişki kurulmamış olabilir.</p>
+        <div class="kaynak-listesi bosluk-ust">
+          <% benzerler.forEach(function (b) { %>
+            <a class="kaynak-kart" href="<%= b.kaynak_tur === 'kayit' ? '/arsiv/kayit/' + b.kaynak_id : b.kaynak_tur === 'varlik' ? '/arsiv/varlik/' + b.kaynak_id : b.kaynak_tur === 'olay' ? '/arsiv/olay/' + b.kaynak_id : '/arsiv' %>">
+              <div class="kaynak-kart-ust">
+                <span class="cip cip--sonuk"><%= b.kaynak_tur %></span>
+                <span class="kaynak-kart-baslik"><%= b.baslik %></span>
+                <span class="kucuk sonuk sayi"><%= b.puan %></span>
+              </div>
+              <% if (b.alinti) { %><div class="kaynak-kart-alinti"><%= b.alinti.slice(0, 160) %></div><% } %>
+            </a>
+          <% }); %>
+        </div>
+      </section>
+    <% } %>
+  </div>
+</div>
+
+<!-- ============================================ DUZENLE / BIRLESTIR -->
+<section class="hud bosluk-ust">
+  <div class="sekmeler">
+    <button type="button" class="sekme" data-sekme="duzenle" data-etkin="1">DUZENLE</button>
+    <button type="button" class="sekme" data-sekme="birlestir">BIRLESTIR</button>
+    <button type="button" class="sekme" data-sekme="denetim">DENETIM IZI</button>
+  </div>
+
+  <!-- Duzenle -->
+  <div data-sekme-govde="duzenle">
+    <form method="post" action="/arsiv/varlik/<%= varlik.id %>" class="hud-form">
+      <%- csrfAlani() %>
+      <div class="hud-form-izgara">
+        <div class="hud-alan hud-alan--genis">
+          <label for="d-ad">AD</label>
+          <input type="text" id="d-ad" name="ad" value="<%= varlik.ad %>" required maxlength="180">
+        </div>
+        <div class="hud-alan">
+          <label for="d-tur">TUR</label>
+          <select id="d-tur" name="tur">
+            <% sabitler.varlikTurleri.forEach(function (t) { %>
+              <option value="<%= t %>" <%= t === varlik.tur ? 'selected' : '' %>><%= sz.VARLIK_TUR_ADI[t] || t %></option>
+            <% }); %>
+          </select>
+        </div>
+        <div class="hud-alan">
+          <label for="d-durum">DURUM</label>
+          <select id="d-durum" name="durum">
+            <% sabitler.varlikDurumlari.forEach(function (d) { %>
+              <option value="<%= d %>" <%= d === varlik.durum ? 'selected' : '' %>><%= sz.DURUM_ADI[d] || d %></option>
+            <% }); %>
+          </select>
+        </div>
+        <div class="hud-alan">
+          <label for="d-tasnif">TASNIF</label>
+          <select id="d-tasnif" name="tasnif">
+            <% sabitler.tasnifler.forEach(function (t) { %>
+              <option value="<%= t %>" <%= t === varlik.tasnif ? 'selected' : '' %>><%= sz.TASNIF_ADI[t] %></option>
+            <% }); %>
+          </select>
+        </div>
+        <div class="hud-alan">
+          <label for="d-onem">ONEM</label>
+          <input type="number" id="d-onem" name="onem" min="0" max="100" value="<%= varlik.onem %>">
+        </div>
+        <div class="hud-alan">
+          <label for="d-guven">KAYNAK DERECESI</label>
+          <select id="d-guven" name="guvenilirlik">
+            <% sabitler.guvenilirlikler.forEach(function (g) { %>
+              <option value="<%= g %>" <%= g === varlik.guvenilirlik ? 'selected' : '' %>><%= g %></option>
+            <% }); %>
+          </select>
+        </div>
+        <div class="hud-alan">
+          <label for="d-takma">TAKMA ADLAR</label>
+          <input type="text" id="d-takma" name="takma_adlar" value="<%= (varlik.takma_adlar || []).join(', ') %>">
+        </div>
+        <div class="hud-alan">
+          <label for="d-etiket">ETIKETLER</label>
+          <input type="text" id="d-etiket" name="etiketler" value="<%= (varlik.etiketler || []).join(', ') %>">
+        </div>
+        <div class="hud-alan hud-alan--genis">
+          <label for="d-ozet">OZET</label>
+          <textarea id="d-ozet" name="ozet" rows="3"><%= varlik.ozet || '' %></textarea>
+        </div>
+        <div class="hud-alan hud-alan--genis">
+          <label for="d-detay">DETAY</label>
+          <textarea id="d-detay" name="detay" rows="6"><%= varlik.detay || '' %></textarea>
+        </div>
+      </div>
+
+      <div class="hud-dugmeler">
+        <button type="submit" class="dugme"><span class="dugme-metin">KAYDET</span></button>
+      </div>
+    </form>
+
+    <form method="post" action="/arsiv/varlik/<%= varlik.id %>/sil" class="bosluk-ust"
+          data-onay="Bu varlığı arşivden düşürmek istediğine emin misin?">
+      <%- csrfAlani() %>
+      <button type="submit" class="dugme dugme--kucuk dugme--sonuk">
+        <span class="dugme-metin">VARLIGI ARSIVDEN DUSUR</span>
+      </button>
+    </form>
+  </div>
+
+  <!-- Birlestir -->
+  <div data-sekme-govde="birlestir" hidden>
+    <p class="hud-altbaslik">
+      Aynı kişi/kurum iki kez girilmişse birleştir. <strong><%= varlik.ad %></strong> varlığının
+      tüm ilişkileri, kayıtları, olayları ve ekleri hedef varlığa taşınır; takma adları ve
+      etiketleri hedefe eklenir, bu kayıt arşivden düşürülür. İşlem denetim izine yazılır.
+    </p>
+    <form method="post" action="/arsiv/varlik/<%= varlik.id %>/birlestir" class="hud-form bosluk-ust"
+          data-onay="Birleştirme geri alınamaz. Devam edilsin mi?">
+      <%- csrfAlani() %>
+      <div class="hud-alan">
+        <label for="b-hedef">HEDEF VARLIK (bu kayıt onun içinde eriyecek)</label>
+        <input type="text" id="b-hedef" class="varlik-arama" data-hedef="b-hedef-id"
+               placeholder="ad yaz ve listeden seç" autocomplete="off">
+        <input type="hidden" id="b-hedef-id" name="hedef_id" required>
+        <ul class="varlik-oneri" id="b-hedef-oneri" hidden></ul>
+      </div>
+      <div class="hud-dugmeler">
+        <button type="submit" class="dugme dugme--kucuk"><span class="dugme-metin">BIRLESTIR</span></button>
+      </div>
+    </form>
+  </div>
+
+  <!-- Denetim -->
+  <div data-sekme-govde="denetim" hidden>
+    <% if (denetim.length) { %>
+      <div class="hud-tablo-sarmal">
+        <table class="hud-tablo">
+          <thead><tr><th class="daralt">ZAMAN</th><th class="daralt">EYLEM</th><th class="daralt">OPERATOR</th><th>DEGISIKLIK</th></tr></thead>
+          <tbody>
+            <% denetim.forEach(function (d) { %>
+              <tr>
+                <td class="daralt kucuk sonuk"><%= sz.tarihSozcuk(d.olusturuldu_at, { gunAdi: false, saat: true }) %></td>
+                <td class="daralt"><span class="cip cip--sonuk"><%= d.eylem %></span></td>
+                <td class="daralt kucuk"><%= d.kullanici_adi || '—' %></td>
+                <td class="kucuk sonuk">
+                  <% if (d.onceki || d.sonraki) { %>
+                    <%= JSON.stringify(d.sonraki || {}).slice(0, 160) %>
+                  <% } else { %>—<% } %>
+                </td>
+              </tr>
+            <% }); %>
+          </tbody>
+        </table>
+      </div>
+    <% } else { %>
+      <p class="hud-altbaslik">Denetim kaydı yok.</p>
+    <% } %>
+  </div>
+</section>
+
+<%- include('../partials/kabuk-alt') %>
+<% const betikler = ['/js/arsiv.js']; %>
+<%- include('../partials/son', { betikler: betikler }) %>
+<%- const betikler = arsiv.js -%>
+<% include("partials/son") -%>

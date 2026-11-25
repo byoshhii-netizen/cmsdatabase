@@ -340,5 +340,313 @@
 </section>
 
 <% const betikler = ['/js/ayarlar.js']; %>
+
+<!-- ======================================================= CEKIRDEK ZEKA -->
+<section class="panel bosluk-ust" id="zeka">
+  <%
+    const ay = {};
+    (ayarlar || []).forEach(function (a) { ay[a.anahtar] = a.deger; });
+    const szk = sozluk;
+    const zd = zekaDurum;
+    const cd = cozDurum;
+  %>
+
+  <div class="hud-serit">
+    <div class="hud-serit-sol">
+      <span class="hud-serit-im" aria-hidden="true">◬</span>
+      <div>
+        <p class="hud-ustbaslik">API'SIZ · TAMAMEN YEREL · ACIKLANABILIR</p>
+        <h2 class="hud-baslik hud-baslik--kucuk">CEKIRDEK ZEKA</h2>
+      </div>
+    </div>
+    <div class="hud-serit-sag">
+      <span class="cip cip--<%= (ay.zeka_motor || 'dahili') === 'dahili' ? 'iyi' : 'uyari' %>">
+        motor: <%= ay.zeka_motor || 'dahili' %>
+      </span>
+    </div>
+  </div>
+
+  <p class="hud-altbaslik">
+    Bu motor hicbir dis servise bagli degil. Dil isleme, geri getirme, ozetleme,
+    varlik cikarimi, graf analizi, istatistik ve siniflandirma tamamen bu sunucuda
+    calisir. Cevaplarin dayanagi her zaman arsivin kendisidir.
+  </p>
+
+  <% if (zd) { %>
+    <div class="hud-izgara bosluk-ust">
+      <div class="hud-veri">
+        <span class="hud-veri-etiket">DIZIN</span>
+        <span class="hud-veri-deger sayi"><%= szk.bicimliSayi(zd.dizin.parca || 0) %></span>
+        <span class="hud-veri-alt"><%= zd.dizin.kaynak || 0 %> kaynak · <%= szk.bicimliSayi(zd.dizin.tekil || 0) %> tekil terim</span>
+      </div>
+      <div class="hud-veri">
+        <span class="hud-veri-etiket">SORGU</span>
+        <span class="hud-veri-deger sayi"><%= szk.bicimliSayi(zd.sorgu.toplam || 0) %></span>
+        <span class="hud-veri-alt">son 7 gun <%= zd.sorgu.hafta || 0 %> · ort. <%= zd.sorgu.ort_sure || 0 %> ms</span>
+      </div>
+      <div class="hud-veri">
+        <span class="hud-veri-etiket">MODEL</span>
+        <span class="hud-veri-deger sayi"><%= zd.modeller.length %></span>
+        <span class="hud-veri-alt">egitilmis siniflandirici</span>
+      </div>
+      <% if (cd) { %>
+        <div class="hud-veri">
+          <span class="hud-veri-etiket">BELGE</span>
+          <span class="hud-veri-deger sayi"><%= cd.tamam %></span>
+          <span class="hud-veri-alt"><%= cd.bekleyen %> bekliyor · <%= cd.basarisiz %> basarisiz</span>
+        </div>
+      <% } %>
+    </div>
+
+    <div class="cambaz-yetenekler bosluk-ust">
+      <% zd.yetenekler.forEach(function (y) { %>
+        <div class="cambaz-yetenek">
+          <span class="cambaz-yetenek-ad"><%= y.ad %></span>
+          <span class="cambaz-yetenek-aciklama"><%= y.detay %></span>
+        </div>
+      <% }); %>
+    </div>
+  <% } %>
+
+  <!-- ----------------------------------------------------------- AYARLAR -->
+  <form method="post" action="/ayarlar/zeka" class="bosluk-ust">
+    <%- csrfAlani() %>
+    <div class="izgara izgara--2">
+      <div class="alan">
+        <label for="zeka_motor">YANIT MOTORU</label>
+        <select id="zeka_motor" name="zeka_motor">
+          <option value="dahili" <%= (ay.zeka_motor || 'dahili') === 'dahili' ? 'selected' : '' %>>
+            dahili — yalnizca cekirdek zeka, disariya hic cikilmaz
+          </option>
+          <option value="karma" <%= ay.zeka_motor === 'karma' ? 'selected' : '' %>>
+            karma — once arsiv; dayanak yoksa saglayiciya sorulur
+          </option>
+          <option value="saglayici" <%= ay.zeka_motor === 'saglayici' ? 'selected' : '' %>>
+            saglayici — dis dil modeli (anahtar gerekir)
+          </option>
+        </select>
+        <div class="ipucu">Varsayilan <strong>dahili</strong>: anahtar tanimli olsa bile dis servis cagrilmaz.</div>
+      </div>
+
+      <div class="alan">
+        <label for="arayuz_temasi">ARAYUZ TEMASI</label>
+        <select id="arayuz_temasi" name="arayuz_temasi">
+          <% [['zumrut','zumrut — operasyon yesili'],['kehribar','kehribar — arsiv sarisi'],['camgobegi','camgobegi — teknik mavi'],['mor','mor — analiz moru']].forEach(function (t) { %>
+            <option value="<%= t[0] %>" <%= (ay.arayuz_temasi || 'zumrut') === t[0] ? 'selected' : '' %>><%= t[1] %></option>
+          <% }); %>
+        </select>
+      </div>
+
+      <div class="alan">
+        <label for="arsiv_varsayilan_tasnif">VARSAYILAN TASNIF</label>
+        <select id="arsiv_varsayilan_tasnif" name="arsiv_varsayilan_tasnif">
+          <% ['acik','hizmete_ozel','gizli','cok_gizli'].forEach(function (t) { %>
+            <option value="<%= t %>" <%= (ay.arsiv_varsayilan_tasnif || 'hizmete_ozel') === t ? 'selected' : '' %>><%= szk.TASNIF_ADI[t] %></option>
+          <% }); %>
+        </select>
+        <div class="ipucu">Yeni kayit, olay ve vakalar bu tasnifle acilir.</div>
+      </div>
+
+      <div class="alan">
+        <label for="risk_esigi">RISK ESIGI</label>
+        <input type="number" id="risk_esigi" name="risk_esigi" min="0" max="100"
+               value="<%= ay.risk_esigi || 60 %>">
+        <div class="ipucu">Merkez panosunda ve risk siralamasinda bu puanin uzeri "yuksek" sayilir.</div>
+      </div>
+
+      <div class="alan">
+        <label for="zeka_dizin_parca_kelime">DIZIN PARCA BOYUTU (KELIME)</label>
+        <input type="number" id="zeka_dizin_parca_kelime" name="zeka_dizin_parca_kelime"
+               min="60" max="600" step="20" value="<%= ay.zeka_dizin_parca_kelime || 220 %>">
+        <div class="ipucu">Kucuk parca = keskin alinti, buyuk parca = daha fazla baglam. Degistirince dizini yeniden kur.</div>
+      </div>
+
+      <div class="alan">
+        <label for="arsiv_tasnif_bandi">TASNIF BANDI</label>
+        <select id="arsiv_tasnif_bandi" name="arsiv_tasnif_bandi">
+          <option value="true" <%= (ay.arsiv_tasnif_bandi || 'true') === 'true' ? 'selected' : '' %>>gosterilsin (ust + alt serit)</option>
+          <option value="false" <%= ay.arsiv_tasnif_bandi === 'false' ? 'selected' : '' %>>gizlensin</option>
+        </select>
+      </div>
+
+      <div class="alan">
+        <label for="zeka_otomatik_cozumleme">YUKLENEN BELGELERI OTOMATIK COZUMLE</label>
+        <select id="zeka_otomatik_cozumleme" name="zeka_otomatik_cozumleme">
+          <option value="true" <%= (ay.zeka_otomatik_cozumleme || 'true') === 'true' ? 'selected' : '' %>>evet — yukleme biter bitmez oku</option>
+          <option value="false" <%= ay.zeka_otomatik_cozumleme === 'false' ? 'selected' : '' %>>hayir — elle baslatacagim</option>
+        </select>
+      </div>
+
+      <div class="alan">
+        <label for="zeka_otomatik_varlik">BULUNAN VARLIKLARI OTOMATIK ARSIVE YAZ</label>
+        <select id="zeka_otomatik_varlik" name="zeka_otomatik_varlik">
+          <option value="false" <%= (ay.zeka_otomatik_varlik || 'false') === 'false' ? 'selected' : '' %>>hayir — once operator onaylasin</option>
+          <option value="true" <%= ay.zeka_otomatik_varlik === 'true' ? 'selected' : '' %>>evet — dogrulanmis bulgulari dogrudan ekle</option>
+        </select>
+        <div class="ipucu">Yalnizca TCKN/IBAN gibi <strong>dogrulama testini gecen</strong> bulgular otomatik yazilir.</div>
+      </div>
+    </div>
+
+    <button type="submit" class="dugme bosluk-ust"><span class="dugme-metin">AYARLARI KAYDET</span></button>
+  </form>
+
+  <!-- -------------------------------------------------------- BAKIM ISLERI -->
+  <div class="izgara izgara--2 bosluk-ust">
+    <div class="kutu">
+      <h3 class="hud-ustbaslik">ARAMA DIZINI</h3>
+      <p class="kucuk sonuk">
+        Kayitlar, varliklar, olaylar, vakalar ve cozumlenmis belgeler parcalanip
+        ters dizine yazilir. BM25 siralamasi bu dizinden hesaplanir.
+        Toplu veri girisinden sonra yeniden kurmak gerekir.
+      </p>
+      <% if (zd && zd.dizin) { %>
+        <dl class="ozellik-listesi">
+          <dt>PARCA</dt><dd><%= szk.bicimliSayi(zd.dizin.parca || 0) %></dd>
+          <dt>KAYNAK</dt><dd><%= zd.dizin.kaynak || 0 %></dd>
+          <dt>TEKIL TERIM</dt><dd><%= szk.bicimliSayi(zd.dizin.tekil || 0) %></dd>
+          <dt>ORT. PARCA</dt><dd><%= zd.dizin.ort_uzunluk || 0 %> terim</dd>
+        </dl>
+      <% } %>
+      <form method="post" action="/ayarlar/zeka/dizin">
+        <%- csrfAlani() %>
+        <button type="submit" class="dugme dugme--tam dugme--kucuk"
+                data-onay="Dizin sifirdan kurulacak. Arsiv buyukse bu islem bir sure surebilir. Devam?">
+          <span class="dugme-metin">DIZINI YENIDEN KUR</span>
+        </button>
+      </form>
+    </div>
+
+    <div class="kutu">
+      <h3 class="hud-ustbaslik">BELGE COZUMLEME</h3>
+      <p class="kucuk sonuk">
+        PDF, DOCX, XLSX, PPTX, ODF, RTF, EML, ZIP ve resim ustverileri
+        <strong>dis kutuphane olmadan</strong> okunur; metin, ozet, varlik ve
+        risk isaretleri cikarilir.
+      </p>
+      <% if (cd) { %>
+        <dl class="ozellik-listesi">
+          <dt>COZUMLENDI</dt><dd><%= cd.tamam %></dd>
+          <dt>KISMI</dt><dd><%= cd.kismi %></dd>
+          <dt>BASARISIZ</dt><dd><%= cd.basarisiz %></dd>
+          <dt>BEKLEYEN</dt><dd><%= cd.bekleyen %></dd>
+          <dt>OKUNAN KELIME</dt><dd><%= szk.bicimliSayi(cd.kelime || 0) %></dd>
+          <dt>RISK ISARETI</dt><dd><%= cd.risk %></dd>
+        </dl>
+      <% } %>
+      <form method="post" action="/ayarlar/zeka/cozumle">
+        <%- csrfAlani() %>
+        <button type="submit" class="dugme dugme--tam dugme--kucuk">
+          <span class="dugme-metin">BEKLEYEN BELGELERI COZUMLE</span>
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- ------------------------------------------------------------- MODELLER -->
+  <div class="kutu bosluk-ust">
+    <h3 class="hud-ustbaslik">YEREL OGRENME · SINIFLANDIRICILAR</h3>
+    <p class="kucuk sonuk">
+      Coklu terim Naive Bayes. Arsivdeki etiketli kayitlardan ogrenir, k-kat capraz
+      dogrulama ile kendini sinar ve her tahminde <strong>hangi terimin karari
+      ne kadar etkiledigini</strong> gosterir. Egitim bu sunucuda yapilir.
+    </p>
+
+    <% if (zd && zd.modeller.length) { %>
+      <div class="hud-tablo-sarmal bosluk-ust">
+        <table class="hud-tablo">
+          <thead><tr><th>MODEL</th><th class="sayi daralt">ORNEK</th><th class="sayi daralt">SINIF</th><th class="sayi daralt">DAGARCIK</th><th class="sayi daralt">BASARI</th><th class="daralt">EGITIM</th><th class="daralt"></th></tr></thead>
+          <tbody>
+            <% zd.modeller.forEach(function (m) { %>
+              <tr>
+                <td><strong><%= m.ad %></strong><span class="satir-alt"><%= m.aciklama || '' %></span></td>
+                <td class="sayi daralt"><%= m.ornek_sayisi %></td>
+                <td class="sayi daralt"><%= m.sinif_sayisi %></td>
+                <td class="sayi daralt"><%= szk.bicimliSayi(m.dagarcik || 0) %></td>
+                <td class="sayi daralt">
+                  <% if (m.basari != null) { %>
+                    <span class="cip cip--<%= m.basari >= 75 ? 'iyi' : m.basari >= 55 ? 'uyari' : 'tehlike' %>">%<%= m.basari %></span>
+                  <% } else { %>—<% } %>
+                </td>
+                <td class="daralt kucuk sonuk"><%= szk.gorece(m.egitildi_at) %></td>
+                <td class="daralt">
+                  <form method="post" action="/ayarlar/zeka/model-sil" class="dugme-sirasi">
+                    <%- csrfAlani() %>
+                    <input type="hidden" name="model" value="<%= m.ad %>">
+                    <button type="submit" class="dugme dugme--tehlike dugme--kucuk"
+                            data-onay="<%= m.ad %> modeli silinecek. Devam?">✕</button>
+                  </form>
+                </td>
+              </tr>
+            <% }); %>
+          </tbody>
+        </table>
+      </div>
+    <% } else { %>
+      <div class="bos bosluk-ust"><span class="bos-im" aria-hidden="true">◇</span> Henuz egitilmis model yok.</div>
+    <% } %>
+
+    <form method="post" action="/ayarlar/zeka/model" class="bosluk-ust">
+      <%- csrfAlani() %>
+      <div class="izgara izgara--2">
+        <div class="alan">
+          <label for="egit-model">EGITILECEK MODEL</label>
+          <select id="egit-model" name="model">
+            <option value="kayit_turu">kayit_turu — kaydi metninden turune gore siniflar</option>
+            <option value="kayit_tasnifi">kayit_tasnifi — uygun gizlilik derecesini onerir</option>
+            <option value="varlik_turu">varlik_turu — varligi aciklamasindan turune gore siniflar</option>
+            <option value="belge_turu">belge_turu — cozumlenen belgeyi konusuna gore siniflar</option>
+          </select>
+        </div>
+        <div class="alan alan--dugme">
+          <button type="submit" class="dugme dugme--kucuk"><span class="dugme-metin">MODELI EGIT</span></button>
+          <div class="ipucu">En az 20 etiketli ornek gerekir; egitim birkac saniye surer.</div>
+        </div>
+      </div>
+    </form>
+  </div>
+
+  <!-- --------------------------------------------------------- SORGU GECMISI -->
+  <% if (sorguGecmisi && sorguGecmisi.length) { %>
+    <div class="kutu bosluk-ust">
+      <h3 class="hud-ustbaslik">SON SORGULAR</h3>
+      <div class="hud-tablo-sarmal">
+        <table class="hud-tablo">
+          <thead><tr><th>SORGU</th><th class="daralt">NIYET</th><th class="sayi daralt">BULGU</th><th class="sayi daralt">SURE</th><th class="daralt">ZAMAN</th></tr></thead>
+          <tbody>
+            <% sorguGecmisi.forEach(function (g) { %>
+              <tr>
+                <td><%= g.sorgu %></td>
+                <td class="daralt"><span class="cip cip--sonuk"><%= (g.niyet || '—').replace(/_/g, ' ') %></span></td>
+                <td class="sayi daralt"><%= g.bulgu_sayisi ?? '—' %></td>
+                <td class="sayi daralt"><%= g.sure_ms ?? '—' %> ms</td>
+                <td class="daralt kucuk sonuk"><%= szk.gorece(g.olusturuldu_at) %></td>
+              </tr>
+            <% }); %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  <% } %>
+
+  <% if (zd && zd.niyetDagilim && zd.niyetDagilim.length) { %>
+    <div class="kutu bosluk-ust">
+      <h3 class="hud-ustbaslik">NIYET DAGILIMI</h3>
+      <p class="kucuk sonuk">Operatorun motordan en cok ne istedigini gosterir.</p>
+      <% const enCok = zd.niyetDagilim[0].n || 1; %>
+      <div class="bosluk-ust">
+        <% zd.niyetDagilim.forEach(function (n) { %>
+          <div class="hud-olcer">
+            <div class="hud-olcer-ust">
+              <span><%= n.niyet.replace(/_/g, ' ') %></span>
+              <span class="hud-olcer-deger"><%= n.n %></span>
+            </div>
+            <div class="hud-olcer-ray"><span class="hud-olcer-dolu" data-oran="<%= Math.round((n.n / enCok) * 100) %>"></span></div>
+          </div>
+        <% }); %>
+      </div>
+    </div>
+  <% } %>
+</section>
+
 <%- include('partials/kabuk-alt') %>
 <%- include('partials/son', { betikler: betikler }) %>

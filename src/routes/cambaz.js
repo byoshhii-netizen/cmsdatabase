@@ -7,6 +7,7 @@
 
 const express = require('express');
 const cambazService = require('../services/cambazService');
+const zekaService = require('../services/zekaService');
 const sesServisi = require('../services/sesServisi');
 const ayarService = require('../services/ayarService');
 const { girisGerekli, jsonIster } = require('../middleware/auth');
@@ -33,6 +34,11 @@ yonlendirici.get('/cambaz', onbellekYok, girisGerekli, async (req, res, next) =>
       sesServisi.sesOrnekBilgisi(),
     ]);
 
+    const [motor, zekaDurum] = await Promise.all([
+      ayarService.ayarAl('zeka_motor', 'dahili'),
+      zekaService.durum().catch(() => null),
+    ]);
+
     const sohbetAnahtari = await ayarService.apiAnahtarCoz(saglayici);
     const aramaAnahtari = await ayarService.apiAnahtarCoz(aramaSaglayici);
     const openaiTtsAnahtari = await ayarService.apiAnahtarCoz('openai');
@@ -55,6 +61,8 @@ yonlendirici.get('/cambaz', onbellekYok, girisGerekli, async (req, res, next) =>
       mesajlar,
       saglayici,
       model,
+      motor,
+      zekaDurum,
       anahtarVar: Boolean(sohbetAnahtari),
       aramaVar: Boolean(aramaAnahtari),
       sunucuSesVar: Boolean(openaiTtsAnahtari || elevenlabsAnahtari),

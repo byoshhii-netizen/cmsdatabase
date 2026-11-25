@@ -11,7 +11,8 @@
      data-ses-hiz="<%= sesAyarlari.hiz %>"
      data-ses-perde="<%= sesAyarlari.perde %>"
      data-aktif-oturum="<%= aktifOturum ? aktifOturum.id : '' %>"
-     data-saglayici="<%= saglayici %>">
+     data-saglayici="<%= saglayici %>"
+     data-motor="<%= motor %>">
 
   <aside class="cambaz-yan" id="cambaz-yan">
     <div class="cambaz-yan-sekmeler">
@@ -86,11 +87,21 @@
       <div class="cambaz-durum-sutun">
         <div class="cambaz-durum" id="cambaz-durum-metin">HAZIR</div>
         <div class="kucuk sonuk">
-          <%= anahtarVar ? ('CEVRIMICI · ' + saglayici.toUpperCase()) : 'CEVRIMDISI (DAHILI MOTOR)' %>
-          <% if (aramaVar) { %> · ARAMA AKTIF<% } %>
+          <% if (motor === 'dahili') { %>
+            CEKIRDEK ZEKA · YEREL · API YOK
+          <% } else if (motor === 'karma') { %>
+            KARMA · ONCE ARSIV<%= anahtarVar ? ', DAYANAK YOKSA ' + saglayici.toUpperCase() : ' (DIS ANAHTAR YOK)' %>
+          <% } else { %>
+            <%= anahtarVar ? ('CEVRIMICI · ' + saglayici.toUpperCase()) : 'DIS ANAHTAR YOK · CEKIRDEGE DUSER' %>
+          <% } %>
+          <% if (zekaDurum && zekaDurum.dizin) { %>
+            · DIZIN <%= zekaDurum.dizin.parca || 0 %> PARCA
+          <% } %>
+          <% if (aramaVar && motor !== 'dahili') { %> · ARAMA AKTIF<% } %>
         </div>
       </div>
-      <div class="sag">
+      <div class="sag cambaz-ust-dugmeler">
+        <a class="cip" href="/ayarlar#zeka" title="Motor ayarlari">MOTOR</a>
         <button type="button" id="cambaz-ses-ac-kapat" class="dugme dugme--sonuk dugme--kucuk" aria-pressed="true" title="Sesli yaniti ac/kapat">
           <span class="dugme-metin">🔊 SES</span>
         </button>
@@ -98,18 +109,63 @@
     </div>
 
     <div class="cambaz-mesaj-akis" id="cambaz-mesaj-akis">
-      <% if (!aktifOturum) { %>
-        <div class="bos cambaz-bos-durum">
-          <span class="bos-im" aria-hidden="true">◉</span>
-          Cambaz hazir. Sohbete baslamak icin bir mesaj yaz veya mikrofona bas.
+      <% if (!mesajlar.length) { %>
+        <div class="cambaz-karsilama">
+          <div class="cambaz-karsilama-ust">
+            <span class="bos-im" aria-hidden="true">◉</span>
+            <div>
+              <h2 class="hud-baslik hud-baslik--kucuk">CEKIRDEK ZEKA HAZIR</h2>
+              <p class="hud-altbaslik">
+                Bu motor bir dil modeli servisine bagli degil. Sorunu ayristirir, arsivi
+                BM25 ile tarar, graf/zaman/istatistik hesaplarini kendi yapar ve
+                <strong>her cumlesinin dayanagini kaynak olarak gosterir</strong>.
+                Dayanak yoksa uydurmaz, bilmedigini soyler.
+              </p>
+            </div>
+          </div>
+
+          <% if (zekaDurum && zekaDurum.yetenekler && zekaDurum.yetenekler.length) { %>
+            <div class="cambaz-yetenekler">
+              <% zekaDurum.yetenekler.forEach(function (y) { %>
+                <div class="cambaz-yetenek">
+                  <span class="cambaz-yetenek-ad"><%= y.ad %></span>
+                  <span class="cambaz-yetenek-aciklama"><%= y.detay %></span>
+                </div>
+              <% }); %>
+            </div>
+          <% } %>
+
+          <h3 class="hud-ustbaslik bosluk-ust">SUNU SORABILIRSIN</h3>
+          <div class="oneri-seridi" id="cambaz-ornekler"
+               data-ornekler="<%= JSON.stringify([
+                 'Ahmet Yilmaz hakkinda ne biliyoruz?',
+                 'Mersin Limani ile kim baglantili?',
+                 'Son 30 gunde ne oldu?',
+                 'Arsivde anomali var mi?',
+                 'En riskli varliklar hangileri?',
+                 'Celiskili kayitlari listele',
+                 'Hangi konularda bilgi boslugu var?',
+                 'KYT-000001 kaydini ozetle',
+                 'Istanbul ile Ankara arasindaki baglanti yolu nedir?',
+                 'Arsiv istatistiklerini ver'
+               ]) %>">
+          </div>
         </div>
       <% } %>
       <% mesajlar.forEach(function (m) { %>
+        <% const mm = m.meta || {}; %>
         <div class="cambaz-mesaj cambaz-mesaj--<%= m.rol %>" data-mesaj-id="<%= m.id %>">
           <div class="cambaz-mesaj-govde"><%= m.icerik %></div>
           <div class="kucuk sonuk cambaz-mesaj-zaman">
             <%= new Date(m.olusturuldu_at).toLocaleTimeString('tr-TR') %>
             <% if (m.sesli) { %> · 🎙<% } %>
+            <% if (m.rol === 'ajan') { %>
+              <% if (mm.niyet) { %> · <span class="cip cip--sonuk"><%= mm.niyet.replace(/_/g, ' ') %></span><% } %>
+              <% if (mm.bulgu) { %> · <span class="cip cip--sonuk"><%= mm.bulgu %> kaynak</span><% } %>
+              <% if (mm.cevrimici === false || m.model === 'cekirdek-zeka') { %> · <span class="cip cip--iyi">yerel</span>
+              <% } else if (mm.cevrimici) { %> · <span class="cip cip--uyari">dis servis</span><% } %>
+              <% if (m.gecikme_ms) { %> · <%= m.gecikme_ms %> ms<% } %>
+            <% } %>
             <% if (m.hata) { %> · <span class="kirmizi-metin">hata</span><% } %>
           </div>
         </div>

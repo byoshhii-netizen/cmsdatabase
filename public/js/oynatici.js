@@ -1,149 +1,191 @@
 'use strict';
-/* ==========================================================================
-   public/js/oynatici.js
-   Cyber/terminal temali dahili medya goruntuleyici.
-   Fotograf/video/ses/PDF dosyalarini indirmeye gerek kalmadan, sayfa
-   icinde (hem /depo hem /paylas sayfalarinda) acar. Kaynak olarak sunucunun
-   kimlik dogrulamali/paylasim-token'li "goruntule" ucu kullanilir; tarayici
-   video/ses etiketleri Range basliklarini kendiliginden gonderir, bu sayede
-   ileri/geri sarma calisir.
-   ========================================================================== */
+/**
+ * public/js/oynatici.js
+ * Depo medya oynaticisi. [data-medya-ac] dugmesine basildiginda dosyanin
+ * mime turune gore <img>/<video>/<audio>/<embed> ogesini modal govdesine
+ * yerlestirir. Onizlenemeyen turlerde indirme yoluna yonlendirir.
+ *
+ * Govde DOM API ile kurulur; hicbir yerde innerHTML ile dis veri basilmaz.
+ */
+(function () {
+  const perde = document.getElementById('oynatici-perde');
+  const govde = document.getElementById('oynatici-govde');
+  const baslikDugum = document.getElementById('oynatici-baslik');
+  const indirBag = document.getElementById('oynatici-indir');
+  const kapatDugme = document.getElementById('oynatici-kapat');
+  if (!perde || !govde) return;
 
-(function (kuresel) {
-  const belge = kuresel.document;
+  let sonOdak = null;
 
-  function hazir(f) {
-    if (belge.readyState === 'loading') belge.addEventListener('DOMContentLoaded', f);
-    else f();
+  function temizle() {
+    // Akislari durdur: video/audio bellekte calmaya devam etmesin
+    govde.querySelectorAll('video, audio').forEach(function (m) {
+      try { m.pause(); m.removeAttribute('src'); m.load(); } catch (hata) { /* yoksay */ }
+    });
+    govde.textContent = '';
   }
 
-  hazir(() => {
-    const perde = belge.getElementById('oynatici-perde');
-    const govde = belge.getElementById('oynatici-govde');
-    const baslikEl = belge.getElementById('oynatici-baslik');
-    const indirLink = belge.getElementById('oynatici-indir');
-    const kapatDugme = belge.getElementById('oynatici-kapat');
-    if (!perde || !govde) return; // bu sayfada oynatici markup'i yok
+  function kapat() {
+    temizle();
+    perde.setAttribute('aria-hidden', 'true');
+    perde.classList.remove('acik');
+    document.body.classList.remove('modal-acik');
+    if (sonOdak && sonOdak.focus) sonOdak.focus();
+    sonOdak = null;
+  }
 
-    function temizle() {
-      // Oynayan video/sesi durdurup kaynaklarini birak.
-      govde.querySelectorAll('video, audio').forEach((el) => {
-        try { el.pause(); el.removeAttribute('src'); el.load(); } catch (_) { /* yoksay */ }
-      });
-      govde.textContent = '';
+  function bekleyenSatir(metin) {
+    const satir = document.createElement('div');
+    satir.className = 'terminal-satir terminal-satir--cikti';
+    satir.textContent = metin;
+    const imlec = document.createElement('span');
+    imlec.className = 'imlec';
+    satir.appendChild(imlec);
+    return satir;
+  }
+
+  function hataSatiri(metin) {
+    const kutu = document.createElement('div');
+    kutu.className = 'uyari-kutu uyari-kutu--hata';
+    kutu.textContent = metin;
+    return kutu;
+  }
+
+  function medyaKur(bilgi) {
+    temizle();
+    govde.appendChild(bekleyenSatir('akis baslatiliyor'));
+
+    const mime = String(bilgi.mime || '');
+    let oge = null;
+
+    if (mime.startsWith('image/')) {
+      oge = document.createElement('img');
+      oge.className = 'oynatici-resim';
+      oge.alt = bilgi.ad;
+      oge.src = bilgi.goruntule;
+    } else if (mime.startsWith('video/')) {
+      oge = document.createElement('video');
+      oge.className = 'oynatici-video';
+      oge.controls = true;
+      oge.preload = 'metadata';
+      oge.playsInline = true;
+      oge.src = bilgi.goruntule;
+    } else if (mime.startsWith('audio/')) {
+      const sarmal = document.createElement('div');
+      sarmal.className = 'oynatici-ses-sarmal';
+
+      const ses = document.createElement('audio');
+      ses.className = 'oynatici-ses';
+      ses.controls = true;
+      ses.preload = 'metadata';
+      ses.src = bilgi.goruntule;
+
+      const ad = document.createElement('div');
+      ad.className = 'oynatici-ses-ad';
+      ad.textContent = bilgi.ad;
+
+      sarmal.appendChild(ad);
+      sarmal.appendChild(ses);
+      oge = sarmal;
+    } else if (mime === 'application/pdf') {
+      oge = document.createElement('embed');
+      oge.className = 'oynatici-belge';
+      oge.type = 'application/pdf';
+      oge.src = bilgi.goruntule;
     }
 
-    function kapat() {
-      perde.classList.remove('acik');
-      perde.setAttribute('aria-hidden', 'true');
+    if (!oge) {
       temizle();
+      govde.appendChild(hataSatiri(
+        'Bu tur tarayicida onizlenemiyor (' + (mime || 'bilinmeyen tur') + '). '
+        + 'Indirip yerel bir uygulamayla acabilirsin.',
+      ));
+      return;
     }
 
-    function hataGoster(mesaj) {
-      const satir = belge.createElement('div');
-      satir.className = 'terminal-satir terminal-satir--hata';
-      satir.textContent = mesaj;
-      govde.appendChild(satir);
-    }
-
-    function ac({ ad, mime, goruntuleUrl, indirUrl, onizlenebilir }) {
+    oge.addEventListener('error', function () {
       temizle();
-      if (baslikEl) baslikEl.textContent = ad || 'adsiz dosya';
+      govde.appendChild(hataSatiri('Dosya yuklenemedi. Silinmis ya da erisim izni kaldirilmis olabilir.'));
+    }, { once: true });
 
-      if (indirUrl) {
-        indirLink.href = indirUrl;
-        indirLink.classList.remove('gizli');
+    const hazir = function () { 
+      const bekleyen = govde.querySelector('.terminal-satir');
+      if (bekleyen) bekleyen.remove();
+    };
+    oge.addEventListener('load', hazir, { once: true });
+    oge.addEventListener('loadeddata', hazir, { once: true });
+    oge.addEventListener('loadedmetadata', hazir, { once: true });
+    setTimeout(hazir, 2500);
+
+    govde.appendChild(oge);
+  }
+
+  function ac(bilgi) {
+    sonOdak = document.activeElement;
+    if (baslikDugum) baslikDugum.textContent = bilgi.ad || '—';
+
+    if (indirBag) {
+      if (bilgi.indir) {
+        indirBag.href = bilgi.indir;
+        indirBag.classList.remove('gizli');
       } else {
-        indirLink.classList.add('gizli');
+        indirBag.classList.add('gizli');
       }
-
-      const m = String(mime || '');
-      const sarmal = belge.createElement('div');
-      sarmal.className = 'oynatici-icerik';
-
-      if (m.startsWith('image/')) {
-        const img = belge.createElement('img');
-        img.src = goruntuleUrl;
-        img.alt = ad || '';
-        img.className = 'oynatici-resim';
-        sarmal.appendChild(img);
-      } else if (m.startsWith('video/')) {
-        const video = belge.createElement('video');
-        video.controls = true;
-        video.autoplay = true;
-        video.className = 'oynatici-video';
-        video.setAttribute('playsinline', '');
-        const kaynak = belge.createElement('source');
-        kaynak.src = goruntuleUrl;
-        kaynak.type = m;
-        video.appendChild(kaynak);
-        sarmal.appendChild(video);
-      } else if (m.startsWith('audio/')) {
-        const sarilan = belge.createElement('div');
-        sarilan.className = 'oynatici-ses-sarmal';
-        const im = belge.createElement('div');
-        im.className = 'oynatici-ses-im';
-        im.setAttribute('aria-hidden', 'true');
-        im.textContent = '♪';
-        const audio = belge.createElement('audio');
-        audio.controls = true;
-        audio.autoplay = true;
-        audio.className = 'oynatici-ses';
-        const kaynak = belge.createElement('source');
-        kaynak.src = goruntuleUrl;
-        kaynak.type = m;
-        audio.appendChild(kaynak);
-        sarilan.appendChild(im);
-        sarilan.appendChild(audio);
-        sarmal.appendChild(sarilan);
-      } else if (m === 'application/pdf') {
-        const gomme = belge.createElement('embed');
-        gomme.src = goruntuleUrl;
-        gomme.type = 'application/pdf';
-        gomme.className = 'oynatici-pdf';
-        sarmal.appendChild(gomme);
-      } else if (onizlenebilir) {
-        // Metin vb. onizlenebilir ama ozel oynatici yok: yeni sekmede ac.
-        const baglanti = belge.createElement('a');
-        baglanti.href = goruntuleUrl;
-        baglanti.target = '_blank';
-        baglanti.rel = 'noopener';
-        baglanti.className = 'dugme';
-        baglanti.textContent = 'YENI SEKMEDE AC';
-        sarmal.appendChild(baglanti);
-      } else {
-        const not = belge.createElement('div');
-        not.className = 'bos';
-        not.textContent = indirUrl
-          ? 'Bu dosya turu icin dahili onizleme yok. Indirerek acabilirsiniz.'
-          : 'Bu dosya turu icin dahili onizleme yok ve bu baglantida indirme kapali.';
-        sarmal.appendChild(not);
-      }
-
-      govde.appendChild(sarmal);
-
-      perde.classList.add('acik');
-      perde.setAttribute('aria-hidden', 'false');
-      if (kuresel.Ses) kuresel.Ses.tarama();
     }
 
-    // Delege tiklama: sayfada sonradan eklenen kartlar icin de calisir.
-    belge.addEventListener('click', (olay) => {
-      const kart = olay.target.closest ? olay.target.closest('[data-medya-ac]') : null;
-      if (!kart) return;
-      ac({
-        ad: kart.dataset.ad,
-        mime: kart.dataset.mime,
-        goruntuleUrl: kart.dataset.goruntule,
-        indirUrl: kart.dataset.indir || '',
-        onizlenebilir: kart.dataset.onizlenebilir === '1',
-      });
+    perde.setAttribute('aria-hidden', 'false');
+    perde.classList.add('acik');
+    document.body.classList.add('modal-acik');
+
+    if (bilgi.onizlenebilir === '1') medyaKur(bilgi);
+    else {
+      temizle();
+      govde.appendChild(hataSatiri(
+        'Bu dosya turu tarayicida gosterilemiyor. Icerigini okumak icin '
+        + 'belge cozumlemesini kullanabilir ya da dosyayi indirebilirsin.',
+      ));
+
+      const baglantilar = document.createElement('div');
+      baglantilar.className = 'dugme-sirasi bosluk-ust';
+
+      const coz = document.createElement('a');
+      coz.className = 'dugme dugme--kucuk';
+      coz.href = '/depo/dosya/' + encodeURIComponent(bilgi.id) + '/cozumleme';
+      const cozMetin = document.createElement('span');
+      cozMetin.className = 'dugme-metin';
+      cozMetin.textContent = '▤ BELGE COZUMLEMESI';
+      coz.appendChild(cozMetin);
+
+      baglantilar.appendChild(coz);
+      govde.appendChild(baglantilar);
+    }
+
+    if (kapatDugme && kapatDugme.focus) kapatDugme.focus();
+  }
+
+  document.addEventListener('click', function (olay) {
+    const dugme = olay.target.closest ? olay.target.closest('[data-medya-ac]') : null;
+    if (!dugme) return;
+    olay.preventDefault();
+    ac({
+      id: dugme.getAttribute('data-id'),
+      ad: dugme.getAttribute('data-ad'),
+      mime: dugme.getAttribute('data-mime'),
+      goruntule: dugme.getAttribute('data-goruntule'),
+      indir: dugme.getAttribute('data-indir'),
+      onizlenebilir: dugme.getAttribute('data-onizlenebilir'),
     });
-
-    if (kapatDugme) kapatDugme.addEventListener('click', kapat);
-    perde.addEventListener('click', (olay) => { if (olay.target === perde) kapat(); });
-    belge.addEventListener('keydown', (olay) => { if (olay.key === 'Escape') kapat(); });
-
-    kuresel.Oynatici = { ac, kapat };
   });
-})(window);
+
+  if (kapatDugme) kapatDugme.addEventListener('click', kapat);
+
+  perde.addEventListener('mousedown', function (olay) {
+    if (olay.target === perde) kapat();
+  });
+
+  document.addEventListener('keydown', function (olay) {
+    if (olay.key === 'Escape' && perde.getAttribute('aria-hidden') === 'false') kapat();
+  });
+
+  window.Oynatici = { ac, kapat };
+})();
