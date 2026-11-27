@@ -1,0 +1,193 @@
+<%- include('../partials/bas') %>
+<%- include('../partials/kabuk-ust') %>
+
+<%
+  const n = veri.noktalar || [];
+  const baglar = veri.baglantilar || [];
+  const isr = veri.isaretler || [];
+  const noktaJson = JSON.stringify(n.map(function (x) {
+    return { id: x.id, baslik: x.baslik, tur: x.tur, kaynak: x.kaynak,
+      enlem: Number(x.enlem), boylam: Number(x.boylam), onem: x.onem || 50 };
+  }));
+%>
+
+<section class="kure-kabuk">
+  <!-- SOL PANEL -->
+  <aside class="kure-yan">
+    <div class="kure-yan-bas">
+      <div class="kure-marka">
+        <span class="kure-marka-im" aria-hidden="true">◍</span>
+        <div>
+          <div class="kure-marka-ad">MUKTEBES</div>
+          <div class="kure-marka-alt">DÜNYA GÖZLEM MASASI</div>
+        </div>
+      </div>
+      <p class="kure-ozet">
+        <%= n.length %> konumlu öğe · <%= isr.length %> işaret · <%= baglar.length %> bağlantı
+      </p>
+    </div>
+
+    <!-- Yüzey + katmanlar -->
+    <div class="kure-bolum">
+      <div class="kure-bolum-bas">KÜRE GÖRÜNÜMÜ</div>
+      <div class="kure-yuzey-anahtar" role="group" aria-label="Yüzey görünümü">
+        <button type="button" data-yuzey="cizgisel">Çizgisel</button>
+        <button type="button" data-yuzey="uydu" class="etkin">Uydu</button>
+      </div>
+      <div class="kure-katmanlar">
+        <% const katmanlar = [
+          ['izgara','Izgara / koordinat', true],
+          ['terminator','Gece/gündüz terminatörü', true],
+          ['isiklar','Şehir ışıkları', true],
+          ['varliklar','CMS varlıkları', true],
+          ['isaretler','Operatör işaretleri', true],
+          ['baglantilar','Bağlantı yayları', true],
+          ['uydular','Uydu yörüngeleri', true],
+          ['etiketler','Etiketler', true],
+          ['atmosfer','Atmosfer halesi', true]
+        ]; %>
+        <% katmanlar.forEach(function (k) { %>
+          <label class="kure-katman">
+            <input type="checkbox" data-katman="<%= k[0] %>" <%= k[2] ? 'checked' : '' %>>
+            <span><%= k[1] %></span>
+          </label>
+        <% }); %>
+      </div>
+    </div>
+
+    <!-- Kayıtlı işaretler -->
+    <div class="kure-bolum">
+      <div class="kure-bolum-bas">
+        <span>KAYITLI İŞARETLER</span>
+        <span class="kure-sayac" id="kure-isaret-sayac"><%= isr.length %></span>
+      </div>
+      <div class="kure-liste" id="kure-isaret-liste"></div>
+    </div>
+
+    <!-- Konumlu öğeler -->
+    <div class="kure-bolum kure-bolum--esnek">
+      <div class="kure-bolum-bas">
+        <span>KONUMLU ÖĞELER</span>
+        <span class="kure-sayac"><%= n.length %></span>
+      </div>
+      <label class="kure-arama">
+        <span aria-hidden="true">⌕</span>
+        <input type="search" id="kure-arama" placeholder="Öğe ara" autocomplete="off">
+      </label>
+      <div class="kure-liste kure-liste--kaydir" id="kure-nokta-liste">
+        <% if (!n.length) { %>
+          <p class="bos kucuk sonuk">Koordinatlı öğe yok. Varlık/olay/kayıt formlarına enlem-boylam girebilir ya da GPS etiketli bir fotoğraf yükleyip çözümletebilirsin.</p>
+        <% } %>
+        <% n.slice(0, 400).forEach(function (x, i) { %>
+          <button type="button" class="kure-liste-oge" data-nokta="<%= i %>"
+                  data-ad="<%= String(x.baslik || '').toLocaleLowerCase('tr-TR') %>">
+            <span class="kure-liste-im kure-liste-im--<%= x.kaynak %>"></span>
+            <span class="kure-liste-ad"><%= x.baslik %></span>
+            <span class="kure-liste-koor"><%= Number(x.enlem).toFixed(2) %>, <%= Number(x.boylam).toFixed(2) %></span>
+          </button>
+        <% }); %>
+      </div>
+    </div>
+
+    <div class="kure-yan-alt">
+      <span class="kure-kaynak-im">VERİ KAYNAĞI</span>
+      <span>KAPALI DEVRE · CMS ARŞİVİ</span>
+    </div>
+  </aside>
+
+  <!-- KÜRE -->
+  <div class="kure-sahne">
+    <canvas id="kure-tuval"
+            data-noktalar='<%= noktaJson %>'
+            data-baglantilar='<%= JSON.stringify(baglar) %>'
+            data-isaretler='<%= JSON.stringify(isr) %>'
+            aria-label="İstihbarat küresi"></canvas>
+
+    <div class="kure-hud-ust">
+      <div class="kure-hud-rozet">
+        <span class="kure-hud-im" aria-hidden="true">⊕</span>
+        <span>MUKTEBES // KÜRE</span>
+      </div>
+      <div class="kure-hud-koor" id="kure-koordinat">—</div>
+    </div>
+
+    <div class="kure-hud-durum" id="kure-durum"></div>
+
+    <div class="kure-aciklama">
+      <span><i class="kure-renk kure-renk--varlik"></i> varlık</span>
+      <span><i class="kure-renk kure-renk--olay"></i> olay</span>
+      <span><i class="kure-renk kure-renk--kayit"></i> kayıt</span>
+      <span><i class="kure-renk kure-renk--dosya"></i> foto GPS</span>
+      <span><i class="kure-renk kure-renk--isaret"></i> işaret</span>
+      <span><i class="kure-renk kure-renk--uydu"></i> uydu</span>
+    </div>
+
+    <div class="kure-kontrol">
+      <button type="button" id="kure-yakin" title="Yakınlaştır" aria-label="Yakınlaştır">＋</button>
+      <span class="kure-kontrol-ayrac"></span>
+      <button type="button" id="kure-uzak" title="Uzaklaştır" aria-label="Uzaklaştır">−</button>
+      <span class="kure-kontrol-ayrac"></span>
+      <button type="button" id="kure-turkiye" title="Türkiye'ye odaklan" aria-label="Türkiye'ye odaklan">⌖</button>
+      <button type="button" id="kure-dunya" title="Dünya görünümü" aria-label="Dünya görünümü">◯</button>
+      <span class="kure-kontrol-ayrac"></span>
+      <button type="button" id="kure-isaret-ekle" title="İşaret ekle" aria-label="İşaret ekle">⊕</button>
+      <button type="button" id="kure-olcum" title="Mesafe ölç" aria-label="Mesafe ölç">⟞</button>
+    </div>
+
+    <!-- Seçim paneli -->
+    <aside class="kure-secim" id="kure-secim" hidden>
+      <div class="kure-secim-bas">
+        <span id="kure-secim-tur">NESNE</span>
+        <button type="button" id="kure-secim-kapat" aria-label="Kapat">×</button>
+      </div>
+      <h3 class="kure-secim-baslik" id="kure-secim-baslik">—</h3>
+      <div class="kure-secim-govde" id="kure-secim-govde"></div>
+      <div class="kure-secim-bag" id="kure-secim-bag" hidden></div>
+    </aside>
+  </div>
+</section>
+
+<!-- İşaret ekleme modalı -->
+<div class="modal-perde kure-modal" id="kure-isaret-modal" hidden>
+  <form class="kure-editor" id="kure-isaret-form" autocomplete="off">
+    <div class="kure-editor-bas">
+      <span class="kure-editor-damga">SAHA KAYDI</span>
+      <button type="button" id="kure-isaret-kapat" class="kure-editor-kapat" aria-label="Kapat">×</button>
+    </div>
+    <p class="kure-editor-koor">HARİTA İŞARETİ · <span id="kure-isaret-koordinat">—</span></p>
+    <label class="alan">
+      <span class="alan-etiket">İŞARET ADI</span>
+      <input name="baslik" maxlength="120" required placeholder="Örn. Gözlem noktası">
+    </label>
+    <label class="alan">
+      <span class="alan-etiket">NOT</span>
+      <textarea name="not" maxlength="4000" rows="3" placeholder="Bu noktayla ilgili istihbarat notu..."></textarea>
+    </label>
+    <div class="izgara izgara--2">
+      <label class="alan">
+        <span class="alan-etiket">TASNİF</span>
+        <select name="tasnif">
+          <option value="acik">AÇIK</option>
+          <option value="hizmete_ozel" selected>HİZMETE ÖZEL</option>
+          <option value="gizli">GİZLİ</option>
+          <option value="cok_gizli">ÇOK GİZLİ</option>
+        </select>
+      </label>
+      <label class="alan">
+        <span class="alan-etiket">RENK</span>
+        <input type="color" name="renk" value="#f5b728">
+      </label>
+    </div>
+    <input type="hidden" name="enlem">
+    <input type="hidden" name="boylam">
+    <p class="kure-editor-hata" id="kure-isaret-hata" role="alert"></p>
+    <div class="kure-editor-alt">
+      <button type="button" id="kure-isaret-vazgec" class="dugme dugme--sonuk"><span class="dugme-metin">VAZGEÇ</span></button>
+      <button type="submit" class="dugme"><span class="dugme-metin">İŞARETİ SAKLA</span></button>
+    </div>
+  </form>
+</div>
+
+<%- include('../partials/kabuk-alt') %>
+<% const betikler = ['/js/dunya-veri.js', '/js/kure.js']; %>
+<%- include('../partials/son', { betikler: betikler }) %>

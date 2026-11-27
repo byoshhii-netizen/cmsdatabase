@@ -1,0 +1,107 @@
+<%- include('../partials/bas') %>
+<%- include('../partials/kabuk-ust') %>
+
+<section class="hud">
+  <div class="hud-serit">
+    <div class="hud-serit-sol">
+      <span class="hud-serit-im" aria-hidden="true">⚿</span>
+      <div>
+        <p class="hud-ustbaslik">KLASİK ŞİFRE VE KODLAMA ÇÖZÜMLEYİCİ</p>
+        <h1 class="hud-baslik">ŞİFRE KIRICI</h1>
+      </div>
+    </div>
+  </div>
+  <p class="hud-altbaslik">
+    Girdiye konan metin bütün bilinen yöntemlerle denenir; <strong>okunabilirlik</strong> puanına
+    göre en olası çözümler sıralanır. Base64/Base32, onaltılık, ikilik, Sezar (tüm kaymalar),
+    Atbash, ROT13/47, Vigenère, tek-bayt XOR, Mors, URL/HTML ve daha fazlası — tamamı tarayıcıda,
+    <strong>kapalı devre</strong> çalışır.
+  </p>
+</section>
+
+<div class="sk-duzen bosluk-ust">
+  <!-- GİRDİ -->
+  <section class="panel">
+    <div class="panel-baslik"><span>ŞİFRELİ METİN</span><span class="sag">GİRDİ</span></div>
+    <div class="alan">
+      <textarea id="sk-girdi" class="sk-girdi" rows="6" spellcheck="false" autocomplete="off"
+                placeholder="Çözülecek metni buraya yapıştır — örn. TWVya2V6IGhhemly, KHOOR, 48 65 6c 6c 6f, .... . .-.. .-.. ---"></textarea>
+    </div>
+    <div class="dugme-sirasi bosluk-ust">
+      <button type="button" id="sk-otomatik" class="dugme"><span class="dugme-metin">OTOMATİK KIR</span></button>
+      <button type="button" id="sk-tumu" class="dugme dugme--sonuk"><span class="dugme-metin">TÜM YÖNTEMLER</span></button>
+      <button type="button" id="sk-temizle" class="dugme dugme--sonuk dugme--kucuk"><span class="dugme-metin">TEMİZLE</span></button>
+    </div>
+    <div class="ipucu bosluk-ust">İpucu: <kbd>Ctrl</kbd>+<kbd>Enter</kbd> ile hızlı çöz.</div>
+
+    <div class="panel-baslik bosluk-ust"><span>ELLE YÖNTEM SEÇ</span></div>
+    <div class="izgara izgara--2">
+      <div class="alan">
+        <label class="alan-etiket" for="sk-yontem">YÖNTEM</label>
+        <select id="sk-yontem">
+          <optgroup label="Kodlama">
+            <option value="base64">Base64</option>
+            <option value="base32">Base32</option>
+            <option value="hex">Onaltılık (Hex)</option>
+            <option value="ikilik">İkilik (Binary)</option>
+            <option value="url">URL (yüzde) kodlama</option>
+            <option value="html">HTML varlık</option>
+            <option value="mors">Mors kodu</option>
+            <option value="a1z26">A1Z26 (sayı-harf)</option>
+          </optgroup>
+          <optgroup label="Yerine koyma şifreleri">
+            <option value="sezar">Sezar (Latin)</option>
+            <option value="sezar_tr">Sezar (Türkçe alfabe)</option>
+            <option value="rot13">ROT13</option>
+            <option value="rot47">ROT47</option>
+            <option value="atbash">Atbash</option>
+            <option value="vigenere">Vigenère</option>
+            <option value="xor">XOR (tek bayt)</option>
+          </optgroup>
+          <optgroup label="Diğer">
+            <option value="ters">Ters çevirme</option>
+          </optgroup>
+        </select>
+      </div>
+      <div class="alan">
+        <label class="alan-etiket" for="sk-yon">YÖN</label>
+        <select id="sk-yon">
+          <option value="coz">Çöz (kır)</option>
+          <option value="kodla">Kodla</option>
+        </select>
+      </div>
+    </div>
+    <div class="alan" id="sk-anahtar-sarmal" hidden>
+      <label class="alan-etiket" for="sk-anahtar">ANAHTAR</label>
+      <div class="girdi-sarmal">
+        <input type="text" id="sk-anahtar" autocomplete="off" placeholder="anahtar">
+      </div>
+    </div>
+    <div class="dugme-sirasi bosluk-ust">
+      <button type="button" id="sk-uygula" class="dugme dugme--sonuk"><span class="dugme-metin">UYGULA</span></button>
+    </div>
+  </section>
+
+  <!-- ÇIKTI -->
+  <section class="panel">
+    <div class="panel-baslik">
+      <span>ÇÖZÜM ADAYLARI</span>
+      <span class="sag" id="sk-ozet"></span>
+    </div>
+    <div class="uyari-kutu uyari-kutu--bilgi">
+      <span class="uyari-im" aria-hidden="true">i</span>
+      <span>Bu araç klasik/akademik şifreleri ve kodlamaları çözer. Modern güçlü kriptografi
+        (AES, RSA, bcrypt, SHA) anahtarsız matematiksel olarak geri çevrilemez.</span>
+    </div>
+    <div class="sk-sonuc" id="sk-sonuc">
+      <div class="bos-durum">
+        <span class="bos-durum-im" aria-hidden="true">⌕</span>
+        <p>Çözülecek metni soldaki alana yapıştırıp <strong>Otomatik Kır</strong>'a bas.</p>
+      </div>
+    </div>
+  </section>
+</div>
+
+<%- include('../partials/kabuk-alt') %>
+<% const betikler = ['/js/sifre-kirici.js']; %>
+<%- include('../partials/son', { betikler: betikler }) %>

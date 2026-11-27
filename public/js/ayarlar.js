@@ -247,40 +247,22 @@
       setTimeout(function () { bolum.classList.remove('bolum-vurgulu'); }, 2200);
     }
   }
-})();
-  // ================================================ 3. SIFRE DEGISTIRME SONUCU
-  const sifreFormu = document.getElementById('sifre-form');
-  const sifreSonuc = document.getElementById('sifre-sonuc');
 
-  if (sifreFormu && sifreSonuc) {
-    sifreFormu.addEventListener('submit', async function (olay) {
-      olay.preventDefault();
-      const mevcutSifre = sifreFormu.querySelector('[name="mevcut_sifre"]');
-      const yeniSifre = sifreFormu.querySelector('[name="yeni_sifre"]');
-      const yeniTekrar = sifreFormu.querySelector('[name="yeni_sifre_tekrar"]');
-
-      const yanit = await fetch(sifreFormu.action, {
-        method: sifreFormu.method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          mevcut: mevcutSifre.value,
-          yeni: yeniSifre.value,
-          tekrar: yeniTekrar.value,
-        }),
-      });
-
-      const sonuc = await yanit.json();
-      if (sonuc.durum === 'basarili') {
-        sifreSonuc.textContent = 'Sifreniz degistirildi.';
-        sifreSonuc.className = 'bildirim zumrut';
-        mevcutSifre.value = '';
-        yeniSifre.value = '';
-        yeniTekrar.value = '';
-        gucGuncelle();
-        eslesmeGuncelle();
-      } else {
-        sifreSonuc.textContent = sonuc.hata || 'Sifre guncellenemedi, lutfen tekrar deneyin.';
-        sifreSonuc.className = 'bildirim kirmizi';
+  // ===================================== 5. YENI API ANAHTARI GERI BILDIRIMI
+  // Anahtar formu normal POST ile gonderilir (en guvenlisi); burada yalnizca
+  // bos deger uyarisi ve dugme kilidi eklenir ki kullanici kaydin islendigini
+  // net gorsun. Basari/hata bildirimi sunucudan yonlendirme ile gelir.
+  const anahtarFormu = document.querySelector('form[action="/ayarlar/api-anahtari"]');
+  if (anahtarFormu) {
+    anahtarFormu.addEventListener('submit', function (olay) {
+      const deger = anahtarFormu.querySelector('[name="deger"]');
+      if (deger && deger.value.trim().length < 8) {
+        olay.preventDefault();
+        deger.focus();
+        deger.setCustomValidity('Anahtar cok kisa gorunuyor.');
+        deger.reportValidity();
+        setTimeout(function () { deger.setCustomValidity(''); }, 1500);
       }
     });
   }
+})();

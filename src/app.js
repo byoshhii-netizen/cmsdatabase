@@ -147,8 +147,8 @@ uygulama.use(async (req, res, next) => {
     res.locals.hata = hataHam ? hataHam.slice(0, 400) : null;
 
     // Arayuz temasi ve okunmamis uyari sayaci (gezinti rozeti icin)
-    res.locals.tema = ['zumrut', 'kehribar', 'camgobegi', 'mor']
-      .includes(sistem.arayuz_temasi) ? sistem.arayuz_temasi : 'zumrut';
+    res.locals.tema = ['istihbarat', 'zumrut', 'kehribar', 'camgobegi', 'mor']
+      .includes(sistem.arayuz_temasi) ? sistem.arayuz_temasi : 'istihbarat';
     res.locals.tasnifBandi = sistem.arsiv_tasnif_bandi !== false && sistem.arsiv_tasnif_bandi !== 'false';
     res.locals.varsayilanTasnif = typeof sistem.arsiv_varsayilan_tasnif === 'string'
       ? sistem.arsiv_varsayilan_tasnif : 'hizmete_ozel';

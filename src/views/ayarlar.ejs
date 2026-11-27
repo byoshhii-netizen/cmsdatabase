@@ -431,8 +431,8 @@
       <div class="alan">
         <label for="arayuz_temasi">ARAYUZ TEMASI</label>
         <select id="arayuz_temasi" name="arayuz_temasi">
-          <% [['zumrut','zumrut — operasyon yesili'],['kehribar','kehribar — arsiv sarisi'],['camgobegi','camgobegi — teknik mavi'],['mor','mor — analiz moru']].forEach(function (t) { %>
-            <option value="<%= t[0] %>" <%= (ay.arayuz_temasi || 'zumrut') === t[0] ? 'selected' : '' %>><%= t[1] %></option>
+          <% [['istihbarat','istihbarat — kasvetli celik (varsayilan)'],['zumrut','zumrut — operasyon yesili'],['kehribar','kehribar — arsiv sarisi'],['camgobegi','camgobegi — teknik mavi'],['mor','mor — analiz moru']].forEach(function (t) { %>
+            <option value="<%= t[0] %>" <%= (ay.arayuz_temasi || 'istihbarat') === t[0] ? 'selected' : '' %>><%= t[1] %></option>
           <% }); %>
         </select>
       </div>

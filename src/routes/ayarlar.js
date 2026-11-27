@@ -140,7 +140,8 @@ yonlendirici.post(
 
       if (!sonuc.tamam) {
         if (jsonIster(req)) return res.status(400).json({ tamam: false, hata: sonuc.hata });
-        return res.redirect(303, '/ayarlar?durum=anahtar_hata');
+        // Gercek hata nedenini goster (sessiz basarisizlik yerine).
+        return res.redirect(303, '/ayarlar?hata=' + encodeURIComponent(sonuc.hata || 'Anahtar kaydedilemedi.'));
       }
 
       if (jsonIster(req)) return res.json({ tamam: true, mesaj: 'Anahtar sifrelenerek kaydedildi.' });
@@ -310,7 +311,7 @@ const ZEKA_AYARLARI = {
   zeka_otomatik_varlik: ['true', 'false'],
   arsiv_tasnif_bandi: ['true', 'false'],
   arsiv_varsayilan_tasnif: ['acik', 'hizmete_ozel', 'gizli', 'cok_gizli'],
-  arayuz_temasi: ['zumrut', 'kehribar', 'camgobegi', 'mor'],
+  arayuz_temasi: ['istihbarat', 'zumrut', 'kehribar', 'camgobegi', 'mor'],
 };
 
 /** Cekirdek zeka ve arsiv ayarlarini kaydeder. */
@@ -322,7 +323,10 @@ yonlendirici.post('/ayarlar/zeka', onbellekYok, girisGerekli, yazmaSiniri, csrfK
       if (req.body[anahtar] === undefined) continue;
       const deger = String(req.body[anahtar]);
       if (!izinli.includes(deger)) continue;
-      await ayarService.ayarYaz(anahtar, deger, { yoneticiId: req.yonetici.id });
+      // Dogru "tur" gec: true/false listeleri 'mantik', digerleri 'metin'.
+      const tur = (izinli.length === 2 && izinli.includes('true') && izinli.includes('false'))
+        ? 'mantik' : 'metin';
+      await ayarService.ayarYaz(anahtar, deger, tur);
       kaydedilen.push(anahtar);
     }
 
@@ -334,7 +338,7 @@ yonlendirici.post('/ayarlar/zeka', onbellekYok, girisGerekli, yazmaSiniri, csrfK
       if (req.body[anahtar] === undefined) continue;
       const sayi = Number(req.body[anahtar]);
       if (!Number.isFinite(sayi) || sayi < alt || sayi > ust) continue;
-      await ayarService.ayarYaz(anahtar, String(Math.round(sayi)), { yoneticiId: req.yonetici.id });
+      await ayarService.ayarYaz(anahtar, String(Math.round(sayi)), 'sayi');
       kaydedilen.push(anahtar);
     }
 

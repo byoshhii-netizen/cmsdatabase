@@ -28,7 +28,12 @@ async function ayarAl(anahtar, varsayilan = null) {
   return satir.deger;
 }
 
+const GECERLI_TURLER = new Set(['metin', 'sayi', 'mantik', 'json', 'gizli']);
+
 async function ayarYaz(anahtar, deger, tur = 'metin') {
+  // Saglamlastirma: yanlislikla obje/gecersiz bir "tur" gelirse (eski cagri
+  // sekilleri), veritabani CHECK kisitini ihlal edip tum kaydi dusurmesin.
+  if (typeof tur !== 'string' || !GECERLI_TURLER.has(tur)) tur = 'metin';
   const metinDeger = tur === 'json' ? JSON.stringify(deger) : String(deger);
   await db.sorgu(
     `INSERT INTO ayarlar (anahtar, deger, tur)
@@ -54,7 +59,7 @@ async function arayuzAyarlari() {
     matrix_aktif: true,
     gecis_animasyonu: true,
     bakim_modu: false,
-    arayuz_temasi: 'zumrut',
+    arayuz_temasi: 'istihbarat',
     arsiv_tasnif_bandi: true,
     arsiv_varsayilan_tasnif: 'hizmete_ozel',
     zeka_motor: 'dahili',

@@ -14,6 +14,8 @@ const db = require('../config/db');
 const { sifreHashle } = require('../utils/crypto');
 
 const TABLOLAR = [
+  // --- Harita (Muktebes / Kure) ---
+  'harita_isaretleri',
   // --- Arsiv / zeka katmani (bagimli olanlar once) ---
   'zeka_terimleri', 'zeka_belgeleri', 'zeka_modelleri', 'zeka_sorgulari',
   'uyarilar', 'izleme_kurallari',

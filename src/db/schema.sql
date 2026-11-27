@@ -574,6 +574,32 @@ BEGIN
 END $$;
 
 -- ---------------------------------------------------------------------------
+-- 23. HARITA ISARETLERI  (/analiz/kure — Muktebes operator isaretleri)
+-- ---------------------------------------------------------------------------
+-- Operator kure uzerinde bir noktayi isaretler (baslik, not, tasnif, renk).
+-- Not: isaretService ayni tabloyu ilk kullanimda idempotent olarak da kurar.
+CREATE TABLE IF NOT EXISTS harita_isaretleri (
+  id             BIGSERIAL    PRIMARY KEY,
+  baslik         TEXT        NOT NULL,
+  notlar         TEXT,
+  tasnif         TEXT        NOT NULL DEFAULT 'hizmete_ozel',
+  enlem          DOUBLE PRECISION NOT NULL,
+  boylam         DOUBLE PRECISION NOT NULL,
+  renk           TEXT,
+  varlik_id      BIGINT,
+  olusturan_id   BIGINT      REFERENCES yoneticiler(id) ON DELETE SET NULL,
+  olusturuldu_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  guncellendi_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+DROP TRIGGER IF EXISTS harita_isaretleri_guncellendi ON harita_isaretleri;
+CREATE TRIGGER harita_isaretleri_guncellendi
+  BEFORE UPDATE ON harita_isaretleri
+  FOR EACH ROW EXECUTE FUNCTION trg_guncellendi();
+
+CREATE INDEX IF NOT EXISTS idx_harita_isaret_zaman ON harita_isaretleri (olusturuldu_at DESC);
+
+-- ---------------------------------------------------------------------------
 -- 18. VARSAYILAN AYAR KAYITLARI
 -- ---------------------------------------------------------------------------
 INSERT INTO ayarlar (anahtar, deger, tur, aciklama) VALUES

@@ -22,7 +22,9 @@ const express = require('express');
 const zeka = require('../services/zekaService');
 const arsiv = require('../services/arsivService');
 const cozumleme = require('../services/cozumlemeService');
+const isaretService = require('../services/isaretService');
 const nd = require('../zeka/dogalDil');
+const log = require('../services/logService');
 
 const { girisGerekli } = require('../middleware/auth');
 const { onbellekYok } = require('../middleware/security');
@@ -179,6 +181,88 @@ yonlendirici.get('/analiz/api/harita', async (req, res, next) => {
   } catch (hata) { next(hata); }
 });
 
+// ============================================== MUKTEBES / KURE (UYDU TAKIP)
+
+/**
+ * Konumlu varliklar arasindaki iliskileri buyuk-daire yaylarina cevirir.
+ * Yalnizca iki ucu da koordinatli olan varlik iliskileri dahil edilir.
+ */
+async function baglantiYaylari(noktalar) {
+  const koord = new Map();
+  for (const n of noktalar) {
+    if (n.kaynak === 'varlik' && Number.isFinite(Number(n.enlem)) && Number.isFinite(Number(n.boylam))) {
+      koord.set(Number(n.id), { lon: Number(n.boylam), lat: Number(n.enlem) });
+    }
+  }
+  if (koord.size < 2) return [];
+  try {
+    const graf = await zeka.grafVerisi({ maxDugum: 1200, enAzGuc: 0 });
+    const yaylar = [];
+    for (const k of (graf.kenarlar || [])) {
+      const a = koord.get(Number(k.kaynak));
+      const b = koord.get(Number(k.hedef));
+      if (a && b) {
+        yaylar.push({ a, b, guc: Number(k.guc) || 1 });
+        if (yaylar.length >= 400) break;
+      }
+    }
+    return yaylar;
+  } catch { return []; }
+}
+
+yonlendirici.get('/analiz/kure', async (req, res, next) => {
+  try {
+    const [haritaVeri, isaretler] = await Promise.all([
+      zeka.haritaVerisi({ limit: 1500 }),
+      isaretService.listele(),
+    ]);
+    const baglantilar = await baglantiYaylari(haritaVeri.noktalar || []);
+
+    res.render('analiz/kure', {
+      baslik: 'MUKTEBES // KÜRE',
+      rota: '/analiz/kure',
+      tamEkran: true,
+      veri: {
+        noktalar: haritaVeri.noktalar || [],
+        yogunluk: haritaVeri.yogunluk || [],
+        baglantilar,
+        isaretler,
+      },
+      sozluk: nd,
+    });
+  } catch (hata) { next(hata); }
+});
+
+// ----- Operator isaretleri (ekle / sil) -----
+yonlendirici.post('/analiz/api/isaret', yazmaSiniri, csrfKoru, async (req, res, next) => {
+  try {
+    const sonuc = await isaretService.olustur({
+      baslik: req.body.baslik,
+      not: req.body.not,
+      tasnif: req.body.tasnif,
+      enlem: req.body.enlem,
+      boylam: req.body.boylam,
+      renk: req.body.renk,
+      varlikId: req.body.varlik_id,
+      yoneticiId: req.yonetici && req.yonetici.id,
+    });
+    if (!sonuc.tamam) return res.status(400).json({ tamam: false, hata: sonuc.hata });
+    await log.bilgi({
+      kategori: 'analiz', olay: 'harita_isareti_eklendi',
+      mesaj: `Küre işareti: ${sonuc.isaret.baslik}`,
+      yoneticiId: req.yonetici && req.yonetici.id, req,
+    }).catch(() => {});
+    res.json({ tamam: true, isaret: sonuc.isaret });
+  } catch (hata) { next(hata); }
+});
+
+yonlendirici.post('/analiz/api/isaret/:id/sil', yazmaSiniri, csrfKoru, async (req, res, next) => {
+  try {
+    const silindi = await isaretService.sil(req.params.id);
+    res.json({ tamam: silindi });
+  } catch (hata) { next(hata); }
+});
+
 // =============================================================== KUMELER
 
 yonlendirici.get('/analiz/kumeler', async (req, res, next) => {
@@ -193,6 +277,19 @@ yonlendirici.get('/analiz/kumeler', async (req, res, next) => {
       rota: '/analiz/kumeler',
       betikler: ['/js/analiz.js'],
       kumeler, sorgu: req.query,
+      sozluk: nd,
+    });
+  } catch (hata) { next(hata); }
+});
+
+// ============================================================ SIFRE KIRICI
+
+yonlendirici.get('/analiz/sifre', (req, res, next) => {
+  try {
+    res.render('analiz/sifre', {
+      baslik: 'ŞİFRE KIRICI',
+      rota: '/analiz/sifre',
+      betikler: ['/js/sifre-kirici.js'],
       sozluk: nd,
     });
   } catch (hata) { next(hata); }
